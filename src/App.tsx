@@ -6,7 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
+import RegisterPage from "./pages/RegisterPage"; // <-- Ini diperbaiki agar ke halaman daftar akun Ortu
+import PPDBForm from "./pages/PPDBForm";         // <-- Ini ditambahkan untuk Form 3 Halaman
 import AdminLoginPage from "./pages/AdminLoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import AdminPage from "./pages/AdminPage";
@@ -25,6 +26,8 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            {/* Rute baru untuk Form PPDB ditambahkan di bawah ini */}
+            <Route path="/daftar-ppdb" element={<PPDBForm />} />
             <Route path="/admin/login" element={<AdminLoginPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/admin" element={<AdminPage />} />
@@ -36,4 +39,4 @@ const App = () => (
   </QueryClientProvider>
 );
 
-export default App;
+export default App; 

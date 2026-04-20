@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import AddChildDialog from "@/components/dashboard/AddChildDialog";
 import BannerCarousel from "@/components/dashboard/BannerCarousel";
 import { LogOut, Plus, Baby, Calendar, MapPin, User } from "lucide-react";
 
@@ -31,7 +30,6 @@ const statusConfig = {
 export default function DashboardPage() {
   const { user, profile, loading } = useAuth();
   const [children, setChildren] = useState<Child[]>([]);
-  const [dialogOpen, setDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -103,9 +101,10 @@ export default function DashboardPage() {
             <h1 className="text-2xl font-bold text-foreground">Dashboard Orang Tua</h1>
             <p className="text-muted-foreground text-sm">Kelola data pendaftaran anak Anda</p>
           </div>
-          <Button onClick={() => setDialogOpen(true)} className="gradient-islamic border-0">
+          {/* Tombol ini sekarang mengarah ke form 3 halaman */}
+          <Button onClick={() => navigate("/daftar-ppdb")} className="gradient-islamic border-0">
             <Plus className="h-4 w-4" />
-            Tambah Anak
+            <span className="ml-1">Tambah Anak</span>
           </Button>
         </div>
 
@@ -118,9 +117,10 @@ export default function DashboardPage() {
               <p className="text-sm text-muted-foreground mb-4">
                 Klik "Tambah Anak" untuk mendaftarkan anak Anda
               </p>
-              <Button onClick={() => setDialogOpen(true)} variant="outline">
+              {/* Tombol ini juga mengarah ke form 3 halaman */}
+              <Button onClick={() => navigate("/daftar-ppdb")} variant="outline">
                 <Plus className="h-4 w-4" />
-                Tambah Anak Pertama
+                <span className="ml-1">Tambah Anak Pertama</span>
               </Button>
             </CardContent>
           </Card>
@@ -157,13 +157,6 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
-
-      <AddChildDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        profileId={profile?.id || ""}
-        onSuccess={fetchChildren}
-      />
     </div>
   );
 }

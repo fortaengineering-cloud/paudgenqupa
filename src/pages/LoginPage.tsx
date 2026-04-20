@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { loginWithPhone } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client"; // Import Supabase ditambahkan di sini
 
 export default function LoginPage() {
   const [phone, setPhone] = useState("");
@@ -21,7 +21,16 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await loginWithPhone(phone, password);
+      // LOGIKA EMAIL DUMMY GENQUPA DIMASUKKAN DI SINI
+      const dummyEmail = `${phone}@paud.genqupa.co.id`;
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: dummyEmail,
+        password: password,
+      });
+
+      if (error) throw error; // Jika error, langsung lempar ke blok catch di bawah
+
       toast({ title: "Berhasil!", description: "Selamat datang kembali!" });
       navigate("/dashboard");
     } catch (error: any) {
