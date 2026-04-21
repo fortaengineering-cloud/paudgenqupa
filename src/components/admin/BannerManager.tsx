@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Upload, Trash2, Plus, GripVertical, ExternalLink } from "lucide-react";
+import { Loader2, Upload, Trash2, Plus, ExternalLink, Timer } from "lucide-react";
 
 interface Banner {
   id: string;
@@ -22,7 +22,18 @@ export default function BannerManager() {
   const [uploading, setUploading] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newLink, setNewLink] = useState("");
+  const [intervalSec, setIntervalSec] = useState<number>(() => {
+    const stored = Number(localStorage.getItem("bannerIntervalMs"));
+    return stored && stored >= 1000 ? Math.round(stored / 1000) : 5;
+  });
   const { toast } = useToast();
+
+  const saveInterval = (sec: number) => {
+    const clamped = Math.min(60, Math.max(2, sec || 5));
+    setIntervalSec(clamped);
+    localStorage.setItem("bannerIntervalMs", String(clamped * 1000));
+    toast({ title: "Tersimpan", description: `Interval slide: ${clamped} detik.` });
+  };
 
   useEffect(() => {
     fetchBanners();
@@ -38,13 +49,43 @@ export default function BannerManager() {
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !newTitle.trim()) {
+    if (!file) return;
+    if (!newTitle.trim()) {
       toast({ title: "Error", description: "Judul banner harus diisi.", variant: "destructive" });
+      e.target.value = "";
       return;
     }
 
+    // Validate format
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      toast({ title: "Format tidak didukung", description: "Hanya JPG, PNG, atau WebP yang diizinkan.", variant: "destructive" });
+      e.target.value = "";
+      return;
+    }
+
+    // Validate size (max 2 MB)
+    const MAX_BYTES = 2 * 1024 * 1024;
+    if (file.size > MAX_BYTES) {
+      toast({ title: "Ukuran terlalu besar", description: "Maksimal 2 MB. Kompres gambar terlebih dahulu.", variant: "destructive" });
+      e.target.value = "";
+      return;
+    }
+
+    // Validate link URL if provided
+    if (newLink.trim()) {
+      try {
+        const u = new URL(newLink.trim());
+        if (!["http:", "https:"].includes(u.protocol)) throw new Error();
+      } catch {
+        toast({ title: "Link tidak valid", description: "URL harus diawali http:// atau https://", variant: "destructive" });
+        e.target.value = "";
+        return;
+      }
+    }
+
     setUploading(true);
-    const fileName = `${Date.now()}_${file.name}`;
+    const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
     const { error: uploadError } = await supabase.storage
       .from("banners")
       .upload(fileName, file);
@@ -97,6 +138,34 @@ export default function BannerManager() {
         <h2 className="text-xl font-bold text-foreground">Manajemen Banner</h2>
         <p className="text-sm text-muted-foreground">Kelola banner pengumuman untuk dashboard orang tua</p>
       </div>
+
+      {/* Carousel Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Timer className="h-5 w-5" />
+            Pengaturan Carousel
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-end gap-3 max-w-md">
+            <div className="flex-1 space-y-2">
+              <Label>Interval slide (detik)</Label>
+              <Input
+                type="number"
+                min={2}
+                max={60}
+                value={intervalSec}
+                onChange={(e) => setIntervalSec(Number(e.target.value))}
+              />
+            </div>
+            <Button onClick={() => saveInterval(intervalSec)}>Simpan</Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Pengguna juga bisa pause/play & navigasi manual via panah di banner.
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Add Banner */}
       <Card>
