@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, User, Briefcase, Info } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth"; // KUNCI 1: Import useAuth
 
 export default function RegistrationForm() {
   const [step, setStep] = useState(1);
   const navigate = useNavigate();
+  const { profile } = useAuth(); // KUNCI 2: Ambil profile yang sedang login
 
-  // State untuk menyimpan seluruh data form
+  // State untuk menyimpan seluruh data form sesuai daftar terbaru
   const [formData, setFormData] = useState({
     // --- DATA ANAK ---
     kelasTujuan: '', namaLengkap: '', namaPanggilan: '', nikAnak: '', jenisKelamin: '',
@@ -28,7 +30,7 @@ export default function RegistrationForm() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // FITUR ANTI HILANG & AMBIL DATA EDIT DARI DASHBOARD
+  // FITUR ANTI HILANG SAAT REFRESH & LOAD EDIT DATA
   useEffect(() => {
     const savedData = localStorage.getItem('ppdbFormData');
     const savedStep = localStorage.getItem('ppdbFormStep');
@@ -86,7 +88,7 @@ export default function RegistrationForm() {
   };
 
   // ==========================================
-  // FUNGSI SIMPAN YANG SUDAH DIPERBAIKI (BISA UPDATE)
+  // FUNGSI SIMPAN YANG SUDAH DIPERBAIKI
   // ==========================================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,10 +101,9 @@ export default function RegistrationForm() {
     setError('');
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Sesi berakhir, silakan login kembali.");
+      // KUNCI 3: Pastikan profil ada sebelum menyimpan
+      if (!profile?.id) throw new Error("Sesi berakhir atau profil tidak ditemukan. Silakan login kembali.");
 
-      // CEK APAKAH INI MODE EDIT DARI DASHBOARD?
       const editId = localStorage.getItem('ppdbEditId');
 
       const payload = {
@@ -112,9 +113,9 @@ export default function RegistrationForm() {
         gender: formData.jenisKelamin,
         child_order: parseInt(formData.anakKe) || 1,
         address: formData.alamatAyah,
-        parent_id: user.id,
-        status: 'pending',
-        metadata: formData // Mengirim seluruh data JSON ke tabel
+        parent_id: profile.id, // KUNCI 4: Pakai profile.id agar tidak terjadi data yatim/error foreign key
+        status: 'pending' as const, // KUNCI 5: as const membungkam TypeScript error
+        metadata: formData
       };
 
       if (editId) {
@@ -125,8 +126,6 @@ export default function RegistrationForm() {
           .eq('id', editId);
 
         if (updateError) throw updateError;
-
-        // Hapus penanda mode edit setelah sukses
         localStorage.removeItem('ppdbEditId');
         alert('Perubahan Data Berhasil Disimpan!');
 
@@ -143,7 +142,6 @@ export default function RegistrationForm() {
       // Bersihkan Form
       localStorage.removeItem('ppdbFormData');
       localStorage.removeItem('ppdbFormStep');
-
       navigate('/dashboard');
 
     } catch (err: any) {
@@ -153,14 +151,13 @@ export default function RegistrationForm() {
       setIsSubmitting(false);
     }
   };
-  // ==========================================
 
   const inputClass = "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-colors";
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6 lg:p-8 bg-gray-50 min-h-screen">
       <button onClick={() => {
-        localStorage.removeItem('ppdbEditId'); // Bersihkan mode edit jika batal
+        localStorage.removeItem('ppdbEditId');
         navigate('/dashboard');
       }} className="flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 mb-6 transition-colors">
         <ArrowLeft className="w-4 h-4 mr-2" />
@@ -333,6 +330,14 @@ export default function RegistrationForm() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">No Telp/WA Ayah *</label>
                     <input type="tel" name="telpAyah" value={formData.telpAyah} onChange={handleInputChange} className={inputClass} required />
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">NIK Ayah</label>
+                    <input type="text" name="nikAyah" value={formData.nikAyah} onChange={handleInputChange} className={inputClass} maxLength={16} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tempat Lahir Ayah</label>
+                    <input type="text" name="tempatLahirAyah" value={formData.tempatLahirAyah} onChange={handleInputChange} className={inputClass} />
+                  </div>
                 </div>
               </div>
 
@@ -399,6 +404,14 @@ export default function RegistrationForm() {
                   <div className="col-span-1 md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">No Telp/WA *</label>
                     <input type="tel" name="telpIbu" value={formData.telpIbu} onChange={handleInputChange} className={inputClass} required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">NIK Ibu</label>
+                    <input type="text" name="nikIbu" value={formData.nikIbu} onChange={handleInputChange} className={inputClass} maxLength={16} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tempat Lahir Ibu</label>
+                    <input type="text" name="tempatLahirIbu" value={formData.tempatLahirIbu} onChange={handleInputChange} className={inputClass} />
                   </div>
                 </div>
               </div>
@@ -468,7 +481,7 @@ export default function RegistrationForm() {
               <button type="button" onClick={() => {
                 localStorage.removeItem('ppdbFormData');
                 localStorage.removeItem('ppdbFormStep');
-                localStorage.removeItem('ppdbEditId'); // Tambahan: bersihkan id edit saat batal
+                localStorage.removeItem('ppdbEditId');
                 navigate('/dashboard');
               }} disabled={isSubmitting} className="px-6 py-2.5 rounded-md text-gray-500 font-medium hover:text-gray-700 transition-colors">
                 Batal

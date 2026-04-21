@@ -18,7 +18,7 @@ interface Child {
   child_order: number;
   address: string | null;
   status: "pending" | "verified" | "rejected";
-  metadata: any;
+  metadata?: any; // <-- PERBAIKAN 1: Tambah tanda tanya (?) agar TypeScript tidak error
 }
 
 const statusConfig = {
@@ -38,17 +38,19 @@ export default function DashboardPage() {
     }
   }, [user, loading, navigate]);
 
-  // Mengambil data menggunakan user.id langsung agar akurat
+  // <-- PERBAIKAN 2: Gunakan profile.id agar sinkron dengan relasi database
   useEffect(() => {
-    if (user) fetchChildren();
-  }, [user]);
+    if (profile?.id) {
+      fetchChildren();
+    }
+  }, [profile]);
 
   const fetchChildren = async () => {
-    if (!user) return;
+    if (!profile?.id) return;
     const { data } = await supabase
       .from("children")
       .select("*")
-      .eq("parent_id", user.id)
+      .eq("parent_id", profile.id)
       .order("created_at", { ascending: true });
     if (data) setChildren(data as Child[]);
   };
