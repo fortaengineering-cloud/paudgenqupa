@@ -3,6 +3,9 @@ import { Link } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import InstallPWAButton from "@/components/InstallPWAButton";
+
+const LOGO_URL = "https://cpjkuzfoqdzqozndampm.supabase.co/storage/v1/object/public/gallery/pwa%2Flogo.png";
 
 const navItems = [
   { label: "Beranda", href: "#beranda" },
@@ -22,13 +25,15 @@ export default function Navbar() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-full gradient-islamic flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">G</span>
-            </div>
-            <div>
-              <span className="font-bold text-lg text-foreground">PAUD</span>
-              <span className="font-bold text-lg text-secondary"> GenQuPa</span>
+          <Link to="/" className="flex items-center gap-3">
+            <img
+              src={LOGO_URL}
+              alt="Logo PAUD Tunas GenQuPa"
+              className="h-11 w-11 object-contain"
+            />
+            <div className="leading-tight">
+              <span className="font-bold text-base text-foreground">PAUD Tunas</span>
+              <span className="font-bold text-base text-secondary"> GenQuPa</span>
             </div>
           </Link>
 
@@ -47,6 +52,7 @@ export default function Navbar() {
 
           {/* CTA */}
           <div className="hidden md:flex items-center gap-2">
+            <InstallPWAButton />
             {user ? (
               <Link to={isAdminUser ? "/admin" : "/dashboard"}>
                 <Button size="sm">Dashboard</Button>

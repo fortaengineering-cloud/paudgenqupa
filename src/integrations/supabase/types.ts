@@ -47,39 +47,42 @@ export type Database = {
       children: {
         Row: {
           address: string | null
-          birth_date: string
+          birth_date: string | null
           birth_place: string
           child_order: number
           created_at: string
           full_name: string
           gender: string
           id: string
+          metadata: Json | null
           parent_id: string
           status: Database["public"]["Enums"]["registration_status"]
           updated_at: string
         }
         Insert: {
           address?: string | null
-          birth_date: string
+          birth_date?: string | null
           birth_place: string
           child_order?: number
           created_at?: string
           full_name: string
           gender: string
           id?: string
+          metadata?: Json | null
           parent_id: string
           status?: Database["public"]["Enums"]["registration_status"]
           updated_at?: string
         }
         Update: {
           address?: string | null
-          birth_date?: string
+          birth_date?: string | null
           birth_place?: string
           child_order?: number
           created_at?: string
           full_name?: string
           gender?: string
           id?: string
+          metadata?: Json | null
           parent_id?: string
           status?: Database["public"]["Enums"]["registration_status"]
           updated_at?: string
