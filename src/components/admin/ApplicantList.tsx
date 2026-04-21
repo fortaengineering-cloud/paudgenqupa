@@ -9,7 +9,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Search, CheckCircle, XCircle, Clock, Users } from "lucide-react";
+import { Search, CheckCircle, XCircle, Clock, Users, Download } from "lucide-react";
 
 interface Applicant {
   id: string;
@@ -26,6 +26,7 @@ interface Applicant {
     phone: string;
     address: string | null;
   } | null;
+  metadata?: any;
 }
 
 const statusConfig = {
@@ -69,6 +70,37 @@ export default function ApplicantList() {
     }
   };
 
+  const exportToCSV = () => {
+    const headers = [
+      "Nama Anak", "Jenis Kelamin", "Tempat Lahir", "Tanggal Lahir", "Anak Ke", "Status Pendaftaran",
+      "Nama Ayah", "NIK Ayah", "No Telp Ayah", "Pekerjaan Ayah",
+      "Nama Ibu", "NIK Ibu", "No Telp Ibu", "Pekerjaan Ibu",
+      "Alamat", "Asal Sekolah", "Riwayat Tilawah"
+    ];
+
+    const rows = filtered.map(app => {
+      const m = app.metadata || {};
+      const data = [
+        app.full_name, app.gender, app.birth_place, app.birth_date, app.child_order, app.status,
+        m.namaAyah || "", m.nikAyah || "", m.telpAyah || "", m.pekerjaanAyah || "",
+        m.namaIbu || "", m.nikIbu || "", m.telpIbu || "", m.pekerjaanIbu || "",
+        app.address || "", m.asalSekolah || "", m.riwayatTilawah || ""
+      ];
+      return data.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",");
+    });
+
+    const csvContent = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Data_PPDB_GenQuPa_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const filtered = applicants.filter((a) => {
     const matchSearch = search
       ? a.full_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -92,6 +124,10 @@ export default function ApplicantList() {
         <h2 className="text-xl font-bold text-foreground">Daftar Pendaftar</h2>
         <p className="text-sm text-muted-foreground">Kelola dan verifikasi pendaftaran siswa baru</p>
       </div>
+      <Button onClick={exportToCSV} variant="outline" className="flex items-center gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50">
+        <Download className="h-4 w-4" />
+        📥 Export CSV
+      </Button>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

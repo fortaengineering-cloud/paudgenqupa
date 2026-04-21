@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import BackHomeNav from '@/components/BackHomeNav';
+import { useToast } from "@/hooks/use-toast";
 
 export default function RegisterPage() {
     const [name, setName] = useState('');
@@ -9,32 +10,53 @@ export default function RegisterPage() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+    const { toast } = useToast();
+
+    const phoneClean = (val: string) => {
+        let cleaned = val.replace(/\D/g, "");
+        if (cleaned.startsWith("62")) {
+            cleaned = "0" + cleaned.slice(2);
+        } else if (cleaned.startsWith("8")) {
+            cleaned = "0" + cleaned;
+        }
+        return cleaned;
+    };
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Validasi: nomor HP hanya boleh angka (8-15 digit)
-        const phoneClean = phone.replace(/\D/g, '');
-        if (!/^\d{8,15}$/.test(phoneClean)) {
-            alert("Nomor HP tidak valid. Masukkan hanya angka (8-15 digit), contoh: 08123456789");
+        const cleaned = phoneClean(phone);
+        
+        // Validasi: nomor HP harus berawal 08 dan min 10 digit
+        if (!/^08\d{8,13}$/.test(cleaned)) {
+            toast({
+                title: "Nomor HP tidak valid",
+                description: "Gunakan format 0812..., minimal 10 digit.",
+                variant: "destructive",
+            });
             return;
         }
+
         if (password.length < 6) {
-            alert("Password minimal 6 karakter.");
+            toast({
+                title: "Password terlalu pendek",
+                description: "Password minimal 6 karakter.",
+                variant: "destructive",
+            });
             return;
         }
 
         setLoading(true);
 
-        // LOGIKA EMAIL DUMMY GENQUPA (Login tetap menggunakan No HP)
-        const dummyEmail = `${phoneClean}@paud.genqupa.co.id`;
+        // LOGIKA EMAIL DUMMY GENQUPA (Login tetap menggunakan No HP berawalan 08)
+        const dummyEmail = `${cleaned}@paud.genqupa.co.id`;
 
         const { data, error } = await supabase.auth.signUp({
             email: dummyEmail,
             password: password,
             options: {
                 data: {
-                    phone: phoneClean,
+                    phone: cleaned,
                     name: name
                 },
                 emailRedirectTo: window.location.origin,
@@ -44,10 +66,17 @@ export default function RegisterPage() {
         setLoading(false);
 
         if (error) {
-            alert("Gagal mendaftar: " + error.message);
+            toast({
+                title: "Gagal mendaftar",
+                description: error.message,
+                variant: "destructive"
+            });
         } else {
-            alert("Akun berhasil dibuat! Silakan Login.");
-            navigate('/login'); // Arahkan ke halaman login
+            toast({
+                title: "Berhasil!",
+                description: "Akun berhasil dibuat! Silakan Login."
+            });
+            navigate('/login');
         }
     };
 

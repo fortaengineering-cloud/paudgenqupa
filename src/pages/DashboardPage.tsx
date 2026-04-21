@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import BannerCarousel from "@/components/dashboard/BannerCarousel";
-import { LogOut, Plus, Baby, Calendar, MapPin, User, Edit } from "lucide-react";
+import { LogOut, Plus, Baby, Calendar, MapPin, User, Edit, Search, Users } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 interface Child {
   id: string;
@@ -30,6 +31,7 @@ const statusConfig = {
 export default function DashboardPage() {
   const { user, profile, loading } = useAuth();
   const [children, setChildren] = useState<Child[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -68,6 +70,65 @@ export default function DashboardPage() {
     navigate('/daftar-ppdb');
   };
 
+  const handleRegisterSibling = () => {
+    if (children.length === 0) return;
+    const lastChild = children[children.length - 1];
+    const m = lastChild.metadata || {};
+    
+    const parentData = {
+      namaAyah: m.namaAyah,
+      nikAyah: m.nikAyah,
+      tempatLahirAyah: m.tempatLahirAyah,
+      tanggalLahirAyah: m.tanggalLahirAyah,
+      telpAyah: m.telpAyah,
+      alamatAyah: m.alamatAyah,
+      desaAyah: m.desaAyah,
+      kecamatanAyah: m.kecamatanAyah,
+      kabupatenAyah: m.kabupatenAyah,
+      provinsiAyah: m.provinsiAyah,
+      pekerjaanAyah: m.pekerjaanAyah,
+      alamatKerjaAyah: m.alamatKerjaAyah,
+      namaIbu: m.namaIbu,
+      nikIbu: m.nikIbu,
+      tempatLahirIbu: m.tempatLahirIbu,
+      tanggalLahirIbu: m.tanggalLahirIbu,
+      telpIbu: m.telpIbu,
+      alamatIbu: m.alamatIbu,
+      desaIbu: m.desaIbu,
+      kecamatanIbu: m.kecamatanIbu,
+      kabupatenIbu: m.kabupatenIbu,
+      provinsiIbu: m.provinsiIbu,
+      pekerjaanIbu: m.pekerjaanIbu,
+      alamatKerjaIbu: m.alamatKerjaIbu,
+      akunIg: m.akunIg,
+      namaLengkap: "",
+      namaPanggilan: "",
+      nikAnak: "",
+      jenisKelamin: "",
+      tempatLahirAnak: "",
+      tanggalLahirAnak: "",
+      statusAnak: "",
+      anakKe: "",
+      jumlahSaudara: "",
+      tinggalBersama: "",
+      jarakSekolah: "",
+      asalSekolah: "",
+      kelasAsal: "",
+      riwayatTilawah: "",
+      jumlahHafalan: ""
+    };
+
+    localStorage.setItem('ppdbFormData', JSON.stringify(parentData));
+    localStorage.removeItem('ppdbEditId');
+    localStorage.setItem('ppdbFormStep', '1');
+    navigate('/daftar-ppdb');
+  };
+
+  const filteredChildren = children.filter(child => 
+    child.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    child.status.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -105,33 +166,57 @@ export default function DashboardPage() {
             <h1 className="text-2xl font-bold text-gray-800">Dashboard Orang Tua</h1>
             <p className="text-gray-500 text-sm mt-1">Kelola pendaftaran calon siswa</p>
           </div>
-          <Button onClick={() => {
-            // Jika tambah data baru, bersihkan memori editan lama
-            localStorage.removeItem('ppdbFormData');
-            localStorage.removeItem('ppdbFormStep');
-            localStorage.removeItem('ppdbEditId');
-            navigate("/daftar-ppdb");
-          }}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
-          >
-            <Plus className="h-4 w-4 mr-1" /> Tambah Data Anak
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {children.length > 0 && (
+              <Button onClick={handleRegisterSibling} variant="outline" className="border-emerald-600 text-emerald-700 hover:bg-emerald-50">
+                <Users className="h-4 w-4 mr-1" /> Daftarkan Kakak/Adik
+              </Button>
+            )}
+            <Button onClick={() => {
+              localStorage.removeItem('ppdbFormData');
+              localStorage.removeItem('ppdbFormStep');
+              localStorage.removeItem('ppdbEditId');
+              navigate("/daftar-ppdb");
+            }}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+            >
+              <Plus className="h-4 w-4 mr-1" /> Tambah Data Anak
+            </Button>
+          </div>
         </div>
 
+        {/* Search Bar */}
+        {children.length > 0 && (
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input 
+              type="text" 
+              placeholder="Cari nama anak atau status..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 bg-white border-gray-200 focus:ring-emerald-500"
+            />
+          </div>
+        )}
+
         {/* Daftar Anak */}
-        {children.length === 0 ? (
+        {filteredChildren.length === 0 ? (
           <Card className="border-dashed bg-transparent shadow-none border-2 border-gray-200">
             <CardContent className="py-16 text-center">
               <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Baby className="h-8 w-8" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">Belum ada data pendaftaran</h3>
-              <p className="text-sm text-gray-500 mb-6">Klik tombol di atas untuk mulai mendaftarkan anak Anda.</p>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                {searchQuery ? "Data tidak ditemukan" : "Belum ada data pendaftaran"}
+              </h3>
+              <p className="text-sm text-gray-500 mb-6">
+                {searchQuery ? "Coba kata kunci lain." : "Klik tombol di atas untuk mulai mendaftarkan anak Anda."}
+              </p>
             </CardContent>
           </Card>
         ) : (
           <div className="grid sm:grid-cols-2 gap-4">
-            {children.map((child) => (
+            {filteredChildren.map((child) => (
               <Card key={child.id} className="hover:shadow-md transition-all border-gray-100 overflow-hidden">
                 <div className={`h-2 w-full ${child.status === 'pending' ? 'bg-orange-400' : child.status === 'rejected' ? 'bg-red-500' : 'bg-emerald-500'}`}></div>
                 <CardHeader className="pb-3 bg-white">

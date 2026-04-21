@@ -16,15 +16,26 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const phoneClean = (val: string) => {
+    let cleaned = val.replace(/\D/g, "");
+    if (cleaned.startsWith("62")) {
+      cleaned = "0" + cleaned.slice(2);
+    } else if (cleaned.startsWith("8")) {
+      cleaned = "0" + cleaned;
+    }
+    return cleaned;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validasi: nomor HP hanya boleh angka
-    const phoneClean = phone.replace(/\D/g, "");
-    if (!/^\d{8,15}$/.test(phoneClean)) {
+    const cleaned = phoneClean(phone);
+    
+    // Validasi format nomor HP yang sudah dibersihkan (harus berawal 08, min 10 digit)
+    if (!/^08\d{8,13}$/.test(cleaned)) {
       toast({
         title: "Nomor HP tidak valid",
-        description: "Masukkan hanya angka (8-15 digit), contoh: 08123456789",
+        description: "Gunakan format 0812..., minimal 10 digit.",
         variant: "destructive",
       });
       return;
@@ -33,8 +44,8 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // LOGIKA EMAIL DUMMY GENQUPA
-      const dummyEmail = `${phoneClean}@paud.genqupa.co.id`;
+      // LOGIKA EMAIL DUMMY GENQUPA (Selalu berawal 08)
+      const dummyEmail = `${cleaned}@paud.genqupa.co.id`;
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email: dummyEmail,

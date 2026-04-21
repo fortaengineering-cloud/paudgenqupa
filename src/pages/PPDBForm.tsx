@@ -3,6 +3,7 @@ import { ArrowLeft, User, Briefcase, Info, FileUp, CheckCircle, UploadCloud, Ima
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 export default function RegistrationForm() {
   const [step, setStep] = useState(1);
@@ -138,15 +139,57 @@ export default function RegistrationForm() {
 
   const handleNext = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (step === 1 && (!formData.namaLengkap || !formData.nikAnak)) {
-      setError('Nama Lengkap dan NIK Anak wajib diisi.'); return;
+    const nameRegex = /^[a-zA-Z\s'.]{3,}$/;
+    const nikRegex = /^\d{16}$/;
+    const phoneRegex = /^(08|62)\d{8,}$/;
+
+    if (step === 1) {
+      if (!formData.namaLengkap || !nameRegex.test(formData.namaLengkap)) {
+        toast.error('Nama Lengkap Anak minimal 3 karakter (gunakan huruf, titik, atau kutipan).');
+        return;
+      }
+      if (!formData.nikAnak || !nikRegex.test(formData.nikAnak)) {
+        toast.error('NIK Anak wajib 16 digit angka.');
+        return;
+      }
+      if (!formData.kelasTujuan) {
+        toast.error('Pilih Kelas Tujuan terlebih dahulu.');
+        return;
+      }
     }
-    if (step === 2 && (!formData.namaAyah || !formData.telpAyah)) {
-      setError('Nama Lengkap Ayah dan No. Telp Ayah wajib diisi.'); return;
+    
+    if (step === 2) {
+      if (!formData.namaAyah || !nameRegex.test(formData.namaAyah)) {
+        toast.error('Nama Lengkap Ayah wajib diisi (minimal 3 karakter).');
+        return;
+      }
+      if (formData.nikAyah && !nikRegex.test(formData.nikAyah)) {
+        toast.error('NIK Ayah wajib 16 digit angka.');
+        return;
+      }
+      const cleanPhone = (formData.telpAyah || "").replace(/\D/g, "");
+      if (!cleanPhone || !phoneRegex.test(cleanPhone)) {
+        toast.error('Nomor HP Ayah tidak valid (harus berawal 08/62, min 10 digit).');
+        return;
+      }
     }
-    if (step === 3 && (!formData.namaIbu || !formData.telpIbu)) {
-      setError('Nama Lengkap Ibu dan No. Telp Ibu wajib diisi.'); return;
+    
+    if (step === 3) {
+      if (!formData.namaIbu || !nameRegex.test(formData.namaIbu)) {
+        toast.error('Nama Lengkap Ibu wajib diisi (minimal 3 karakter).');
+        return;
+      }
+      if (formData.nikIbu && !nikRegex.test(formData.nikIbu)) {
+        toast.error('NIK Ibu wajib 16 digit angka.');
+        return;
+      }
+      const cleanPhone = (formData.telpIbu || "").replace(/\D/g, "");
+      if (!cleanPhone || !phoneRegex.test(cleanPhone)) {
+        toast.error('Nomor HP Ibu tidak valid (harus berawal 08/62, min 10 digit).');
+        return;
+      }
     }
+    
     setStep((prev) => prev + 1);
     window.scrollTo(0, 0);
   };
@@ -208,11 +251,11 @@ export default function RegistrationForm() {
       if (editId) {
         const { error: updateError } = await supabase.from('children').update(payload).eq('id', editId);
         if (updateError) throw updateError;
-        alert('Data Berhasil Diperbarui!');
+        toast.success('Data Berhasil Diperbarui!');
       } else {
         const { error: insertError } = await supabase.from('children').insert([payload]);
         if (insertError) throw insertError;
-        alert('Pendaftaran Berhasil Terkirim!');
+        toast.success('Pendaftaran Berhasil Terkirim!');
       }
 
       // 4. BERSIHKAN CACHE
@@ -336,7 +379,7 @@ export default function RegistrationForm() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 text-xs">Jarak Tempat tinggal ke Rufizh GenQuPa</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Jarak Tempat tinggal ke Rufizh GenQuPa</label>
                 <input type="text" name="jarakSekolah" value={formData.jarakSekolah} onChange={handleInputChange} className={inputClass} placeholder="Contoh: 1 km" />
               </div>
               <div>
