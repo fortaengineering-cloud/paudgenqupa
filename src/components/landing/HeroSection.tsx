@@ -1,8 +1,11 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Star } from "lucide-react";
+import { BookOpen, Star, LayoutDashboard, LogIn } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function HeroSection() {
+  const { user, isAdminUser } = useAuth();
+  
   return (
     <section id="beranda" className="relative min-h-screen flex items-center islamic-pattern">
       {/* Background gradient overlay */}
@@ -33,13 +36,30 @@ export default function HeroSection() {
               Yayasan Pendidikan Generasi Qurani Pandeglang
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-4">
               <Link to="/register">
-                <Button size="lg" className="gradient-islamic border-0 text-base px-8 shadow-lg hover:shadow-xl transition-shadow">
+                <Button size="lg" className="gradient-islamic border-0 text-base px-8 shadow-lg hover:shadow-xl transition-shadow w-full sm:w-auto">
                   Daftar Sekarang
                 </Button>
               </Link>
-              <a href="#tentang">
+              
+              {user ? (
+                <Link to={isAdminUser ? "/admin" : "/dashboard"}>
+                  <Button size="lg" className="bg-amber-500 text-white hover:bg-amber-600 font-semibold text-base px-8 shadow-lg hover:shadow-xl transition-shadow w-full sm:w-auto">
+                    <LayoutDashboard className="h-5 w-5 mr-2" />
+                    Dashboard
+                  </Button>
+                </Link>
+              ) : (
+                <Link to="/login">
+                  <Button size="lg" className="bg-amber-500 text-white hover:bg-amber-600 font-semibold text-base px-8 shadow-lg hover:shadow-xl transition-shadow w-full sm:w-auto">
+                    <LogIn className="h-5 w-5 mr-2" />
+                    Masuk
+                  </Button>
+                </Link>
+              )}
+
+              <a href="#tentang" className="hidden sm:block">
                 <Button size="lg" variant="outline" className="text-base px-8">
                   Pelajari Lebih Lanjut
                 </Button>

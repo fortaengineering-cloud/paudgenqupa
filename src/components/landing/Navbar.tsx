@@ -112,23 +112,34 @@ export default function Navbar() {
                 {item.label}
               </a>
             ))}
-            <div className="flex flex-col gap-2 mt-4 px-4 pt-4 border-t">
+            <div className="flex flex-col gap-3 mt-4 px-4 pt-4 border-t">
               {user ? (
                 <>
                   <Link to={isAdminUser ? "/admin" : "/dashboard"} className="w-full" onClick={() => setIsOpen(false)}>
-                    <Button className="w-full bg-emerald-600">Dashboard</Button>
+                    <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center justify-center gap-2 py-6 text-base">
+                      <UserIcon className="h-5 w-5" />
+                      Dashboard Saya
+                    </Button>
                   </Link>
-                  <Button variant="outline" className="w-full border-red-200 text-red-600" onClick={() => { handleLogout(); setIsOpen(false); }}>
-                    <LogOut className="h-4 w-4 mr-2" /> Keluar
+                  <Button 
+                    variant="ghost" 
+                    className="w-full bg-red-50 text-red-600 hover:bg-red-100 font-medium py-6" 
+                    onClick={() => { handleLogout(); setIsOpen(false); }}
+                  >
+                    <LogOut className="h-5 w-5 mr-2" /> Keluar dari Akun
                   </Button>
                 </>
               ) : (
                 <>
                   <Link to="/login" className="w-full" onClick={() => setIsOpen(false)}>
-                    <Button variant="outline" className="w-full border-emerald-200 text-emerald-700">Masuk</Button>
+                    <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-6 text-base">
+                      Masuk Ke Akun
+                    </Button>
                   </Link>
                   <Link to="/register" className="w-full" onClick={() => setIsOpen(false)}>
-                    <Button className="w-full bg-emerald-600">Daftar Sekarang</Button>
+                    <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-6 text-base">
+                      Daftar Sekarang
+                    </Button>
                   </Link>
                 </>
               )}
