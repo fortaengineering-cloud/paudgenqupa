@@ -31,6 +31,7 @@ const statusConfig = {
 export default function DashboardPage() {
   const { user, profile, loading } = useAuth();
   const [children, setChildren] = useState<Child[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
@@ -44,6 +45,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (profile?.id) {
       fetchChildren();
+      fetchPayments();
     }
   }, [profile]);
 
@@ -55,6 +57,32 @@ export default function DashboardPage() {
       .eq("parent_id", profile.id)
       .order("created_at", { ascending: true });
     if (data) setChildren(data as Child[]);
+  };
+
+  const fetchPayments = async () => {
+    if (!profile?.id) return;
+    
+    // Coba dengan profile.id
+    let { data } = await supabase
+      .from("payments" as any)
+      .select("*, children(full_name)")
+      .eq("parent_id", profile.id)
+      .order("created_at", { ascending: false });
+
+    // Fallback ke user.id jika tidak ditemukan
+    if (!data || data.length === 0) {
+      const authId = user?.id;
+      if (authId && authId !== profile.id) {
+        const res = await supabase
+          .from("payments" as any)
+          .select("*, children(full_name)")
+          .eq("parent_id", authId)
+          .order("created_at", { ascending: false });
+        if (res.data && res.data.length > 0) data = res.data;
+      }
+    }
+    
+    if (data) setPayments(data);
   };
 
   const handleLogout = async () => {
@@ -238,11 +266,54 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid sm:grid-cols-2 gap-4">
-            {filteredChildren.map((child) => (
-              <Card key={child.id} className="hover:shadow-md transition-all border-gray-100 overflow-hidden">
-                <div className={`h-2 w-full ${child.status === 'pending' ? 'bg-orange-400' : child.status === 'rejected' ? 'bg-red-500' : 'bg-emerald-500'}`}></div>
-                <CardHeader className="pb-3 bg-white">
+          <div className="space-y-6">
+            {/* RIWAYAT PEMBAYARAN - PENANGANAN PERMINTAAN USER */}
+            {payments.length > 0 && (
+              <Card className="border-emerald-100 shadow-sm overflow-hidden bg-white">
+                <CardHeader className="bg-emerald-50/50 py-4 border-b">
+                  <CardTitle className="text-md flex items-center gap-2 text-emerald-900">
+                    <Landmark className="h-4 w-4" />
+                    Riwayat Konfirmasi Pembayaran
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="divide-y divide-gray-100">
+                    {payments.map((p) => (
+                      <div key={p.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-emerald-50/20 transition-colors">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-gray-800">Rp {p.amount.toLocaleString()}</span>
+                            <span className="text-xs text-gray-400">•</span>
+                            <span className="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-600 font-medium">{p.category}</span>
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            Untuk: <span className="font-semibold text-emerald-700">{p.children?.full_name || "Ananda"}</span>
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3 justify-between sm:justify-end">
+                           <span className="text-[10px] text-gray-400 font-mono">
+                             {new Date(p.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                           </span>
+                           {p.status === "pending" || !p.status ? (
+                             <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200 text-[10px] uppercase font-bold py-0.5">Menunggu</Badge>
+                           ) : p.status === "verified" ? (
+                             <Badge className="bg-emerald-600 text-white border-none shadow-sm text-[10px] uppercase font-bold py-0.5">Validated</Badge>
+                           ) : (
+                             <Badge variant="destructive" className="text-[10px] uppercase font-bold py-0.5">Ditolak</Badge>
+                           )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              {filteredChildren.map((child) => (
+                <Card key={child.id} className="hover:shadow-md transition-all border-gray-100 overflow-hidden">
+                  <div className={`h-2 w-full ${child.status === 'pending' ? 'bg-orange-400' : child.status === 'rejected' ? 'bg-red-500' : 'bg-emerald-500'}`}></div>
+                  <CardHeader className="pb-3 bg-white">
                   <div className="flex flex-col gap-2">
                     <div className="flex justify-between items-start">
                       <CardTitle className="text-lg text-gray-800">{child.full_name}</CardTitle>
@@ -275,7 +346,8 @@ export default function DashboardPage() {
               </Card>
             ))}
           </div>
-        )}
+        </div>
+      )}
       </div>
     </div>
   );

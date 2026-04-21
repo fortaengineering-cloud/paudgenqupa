@@ -27,21 +27,27 @@ export default function PaymentManager() {
   const fetchPayments = async () => {
     try {
       setLoading(true);
-      // Ambil data pembayaran secara mentah tanpa join untuk memastikan data muncul 
-      // meskipun relasi database belum dikonfigurasi dengan benar di Supabase.
+      
+      // Cek sesi saat ini untuk debugging
+      const { data: sessionData } = await supabase.auth.getSession();
+      console.log("Current session user:", sessionData.session?.user?.email);
+      console.log("Current session role:", sessionData.session?.user?.role);
+
+      // Ambil data pembayaran
       const { data, error } = await supabase
         .from("payments" as any)
-        .select("*")
+        .select("*") 
         .order("created_at", { ascending: false });
       
       if (error) {
         console.error("Fetch payments error:", error);
         toast.error("Gagal mengambil data: " + error.message);
-      }
-      
-      if (data) {
+      } else {
         console.log("Payments data received:", data);
-        setPayments(data);
+        setPayments(data || []);
+        if (data && data.length > 0) {
+          toast.success(`Berhasil memuat ${data.length} transaksi.`);
+        }
       }
     } catch (err: any) {
       console.error("Unexpected fetch error:", err);
@@ -60,10 +66,31 @@ export default function PaymentManager() {
       toast.error("Gagal memperbarui status: " + error.message);
     } else {
       const payment = payments.find(p => p.id === id);
-      const parentName = "Orang Tua";
+      const childName = payment?.children?.full_name || "Ananda";
       
       if (status === "verified") {
         toast.success(`Pembayaran Berhasil Diverifikasi`);
+        
+        // Logika WA Otomatis setelah Verifikasi
+        try {
+          // Ambil data profil (No HP) secara terpisah untuk menghindari error join
+          const { data: profileData } = await supabase
+            .from("profiles")
+            .select("phone, name")
+            .eq("user_id", payment.parent_id)
+            .maybeSingle();
+
+          if (profileData?.phone) {
+            let formattedPhone = profileData.phone.replace(/[^0-9]/g, "");
+            if (formattedPhone.startsWith("0")) formattedPhone = "62" + formattedPhone.slice(1);
+            
+            const waMsg = `Assalamu'alaikum Ayah/Bunda, terima kasih atas konfirmasi pembayarannya untuk Ananda ${childName}. Pembayaran ${payment.category} sebesar Rp ${payment.amount.toLocaleString()} telah kami terima dan BERHASIL DIVALIDASI. Jazakumullah khairan katsiran.`;
+            
+            window.open(`https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodeURIComponent(waMsg)}`, "_blank");
+          }
+        } catch (waErr) {
+          console.error("Gagal menyiapkan notifikasi WA:", waErr);
+        }
       } else if (status === "rejected") {
         toast.info(`Pembayaran Telah Ditolak`);
       } else {
@@ -81,9 +108,21 @@ export default function PaymentManager() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h2 className="text-xl font-bold text-foreground">Kelola Pembayaran</h2>
-        <p className="text-sm text-muted-foreground">Verifikasi bukti transfer dari orang tua siswa</p>
+      <header className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-foreground">Kelola Pembayaran</h2>
+          <p className="text-sm text-muted-foreground">Verifikasi bukti transfer dari orang tua siswa</p>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={fetchPayments} 
+          disabled={loading}
+          className="gap-2"
+        >
+          <Clock className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          Refresh Data
+        </Button>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -148,8 +187,8 @@ export default function PaymentManager() {
                       </TableCell>
                       <TableCell>
                         <div className="space-y-0.5">
-                          <p className="text-[10px] font-bold text-emerald-700">SISWA: {p.child_id?.substring(0, 8)}...</p>
-                          <p className="text-[10px] text-muted-foreground">ORTU: {p.parent_id?.substring(0, 8)}...</p>
+                          <p className="font-bold text-emerald-800 text-xs">{p.children?.full_name || "Data Siswa"}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase">ID: {p.child_id?.substring(0, 8)}...</p>
                         </div>
                       </TableCell>
                     <TableCell className="font-medium text-xs">
