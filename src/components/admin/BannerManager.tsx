@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Upload, Trash2, Plus, ExternalLink, Timer } from "lucide-react";
+import { logActivity } from "@/lib/logger";
 
 interface Banner {
   id: string;
@@ -72,6 +73,12 @@ export default function BannerManager() {
       return;
     }
 
+    if (!file.type.startsWith('image/')) {
+      toast({ title: "Format tidak sesuai", description: "Halaman ini hanya mendukung file gambar (JPG, PNG, WebP).", variant: "destructive" });
+      e.target.value = "";
+      return;
+    }
+
     // Validate link URL if provided
     if (newLink.trim()) {
       try {
@@ -108,6 +115,7 @@ export default function BannerManager() {
     if (error) {
       toast({ title: "Gagal", description: error.message, variant: "destructive" });
     } else {
+      logActivity(`Kelola Banner`, `Menambahkan banner baru: ${newTitle.trim()}`);
       setNewTitle("");
       setNewLink("");
       fetchBanners();
@@ -119,6 +127,7 @@ export default function BannerManager() {
 
   const toggleActive = async (banner: Banner) => {
     await supabase.from("banners").update({ is_active: !banner.is_active }).eq("id", banner.id);
+    logActivity(`Kelola Banner`, `Mengubah status banner "${banner.title}" menjadi ${!banner.is_active ? 'Aktif' : 'Nonaktif'}`);
     fetchBanners();
   };
 
@@ -128,6 +137,7 @@ export default function BannerManager() {
       await supabase.storage.from("banners").remove([fileName]);
     }
     await supabase.from("banners").delete().eq("id", banner.id);
+    logActivity(`Kelola Banner`, `Menghapus banner: ${banner.title}`);
     fetchBanners();
     toast({ title: "Berhasil!", description: "Banner dihapus." });
   };

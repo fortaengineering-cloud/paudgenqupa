@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Search, CheckCircle, XCircle, Clock, Users, Download } from "lucide-react";
+import { logActivity } from "@/lib/logger";
 
 interface Applicant {
   id: string;
@@ -65,6 +66,11 @@ export default function ApplicantList() {
     if (error) {
       toast({ title: "Gagal", description: error.message, variant: "destructive" });
     } else {
+      const applicant = applicants.find(a => a.id === id);
+      logActivity(
+        `Verifikasi Pendaftar`,
+        `Mengubah status ${applicant?.full_name || 'Siswa'} menjadi ${statusConfig[status].label}`
+      );
       fetchApplicants();
       toast({ title: "Berhasil!", description: `Status diubah menjadi ${statusConfig[status].label}.` });
     }

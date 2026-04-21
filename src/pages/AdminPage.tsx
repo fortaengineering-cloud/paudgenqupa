@@ -4,15 +4,26 @@ import { useAuth } from "@/hooks/useAuth";
 import { logout } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogOut, FileText, Image, Megaphone, Users, ShieldCheck, Home } from "lucide-react";
+import { LogOut, FileText, Image, Megaphone, Users, ShieldCheck, Home, Settings, ClipboardList, Palette } from "lucide-react";
 import ContentManager from "@/components/admin/ContentManager";
 import GalleryManager from "@/components/admin/GalleryManager";
 import BannerManager from "@/components/admin/BannerManager";
 import ApplicantList from "@/components/admin/ApplicantList";
+import AdminLogList from "@/components/admin/AdminLogList";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 
 export default function AdminPage() {
   const { user, isAdminUser, loading } = useAuth();
   const navigate = useNavigate();
+  const [theme, setTheme] = useState(() => localStorage.getItem("app-theme") || "theme-emerald");
+
+  useEffect(() => {
+    document.body.classList.remove("theme-emerald", "theme-gold", "theme-minimalist");
+    document.body.classList.add(theme);
+    localStorage.setItem("app-theme", theme);
+  }, [theme]);
 
   useEffect(() => {
     if (loading) return;
@@ -39,9 +50,9 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-accent/30">
+    <div className="min-h-screen bg-accent/30 islamic-pattern">
       {/* Header */}
-      <header className="bg-background border-b sticky top-0 z-50 shadow-sm">
+      <header className="bg-background/80 backdrop-blur-md border-b sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link to="/admin" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full gradient-islamic flex items-center justify-center">
@@ -49,13 +60,13 @@ export default function AdminPage() {
             </div>
             <div>
               <span className="font-bold text-foreground">Dashboard</span>
-              <span className="font-bold text-emerald-600"> Admin</span>
+              <span className="font-bold text-primary"> Admin</span>
             </div>
           </Link>
           
           <div className="flex items-center gap-3">
             <Link to="/">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-emerald-600 gap-1.5">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary gap-1.5">
                 <Home className="h-4 w-4" />
                 <span className="hidden sm:inline">Lihat Web</span>
               </Button>
@@ -70,25 +81,48 @@ export default function AdminPage() {
       </header>
 
       <div className="container mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold text-foreground mb-6">Dashboard Admin</h1>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Panel Administrasi</h1>
+            <p className="text-muted-foreground">Kelola seluruh data PAUD GenQuPa</p>
+          </div>
+          
+          <div className="flex items-center gap-3 bg-background p-2 rounded-xl border shadow-sm self-start md:self-center">
+             <Palette className="h-4 w-4 text-muted-foreground ml-2" />
+             <Select value={theme} onValueChange={setTheme}>
+               <SelectTrigger className="w-[180px] border-0 focus:ring-0">
+                 <SelectValue placeholder="Pilih Tema" />
+               </SelectTrigger>
+               <SelectContent>
+                 <SelectItem value="theme-emerald">Emerald (Default)</SelectItem>
+                 <SelectItem value="theme-gold">Gold (Premium)</SelectItem>
+                 <SelectItem value="theme-minimalist">Minimalist White</SelectItem>
+               </SelectContent>
+             </Select>
+          </div>
+        </div>
 
         <Tabs defaultValue="applicants" className="space-y-6">
-          <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full md:w-auto md:inline-grid">
-            <TabsTrigger value="applicants" className="gap-2">
+          <TabsList className="flex flex-wrap h-auto p-1 bg-background/50 backdrop-blur-sm border rounded-xl w-fit">
+            <TabsTrigger value="applicants" className="gap-2 rounded-lg">
               <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Pendaftar</span>
+              <span>Pendaftar</span>
             </TabsTrigger>
-            <TabsTrigger value="content" className="gap-2">
+            <TabsTrigger value="content" className="gap-2 rounded-lg">
               <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Konten</span>
+              <span>Konten</span>
             </TabsTrigger>
-            <TabsTrigger value="gallery" className="gap-2">
+            <TabsTrigger value="gallery" className="gap-2 rounded-lg">
               <Image className="h-4 w-4" />
-              <span className="hidden sm:inline">Galeri</span>
+              <span>Galeri</span>
             </TabsTrigger>
-            <TabsTrigger value="banners" className="gap-2">
+            <TabsTrigger value="banners" className="gap-2 rounded-lg">
               <Megaphone className="h-4 w-4" />
-              <span className="hidden sm:inline">Banner</span>
+              <span>Banner</span>
+            </TabsTrigger>
+            <TabsTrigger value="logs" className="gap-2 rounded-lg">
+              <ClipboardList className="h-4 w-4" />
+              <span>Log</span>
             </TabsTrigger>
           </TabsList>
 
@@ -103,6 +137,9 @@ export default function AdminPage() {
           </TabsContent>
           <TabsContent value="banners">
             <BannerManager />
+          </TabsContent>
+          <TabsContent value="logs">
+            <AdminLogList />
           </TabsContent>
         </Tabs>
       </div>

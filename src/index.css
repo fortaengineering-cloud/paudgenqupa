@@ -101,6 +101,22 @@
     --gold-dark: 42 70% 35%;
     --cream: 150 20% 10%;
   }
+
+  .theme-gold {
+    --primary: 42 80% 45%;
+    --ring: 42 80% 45%;
+    --islamic-green: 42 80% 45%;
+    --islamic-green-dark: 42 80% 30%;
+  }
+
+  .theme-minimalist {
+    --primary: 0 0% 10%;
+    --background: 0 0% 100%;
+    --accent: 0 0% 96%;
+    --ring: 0 0% 10%;
+    --islamic-green: 0 0% 10%;
+    --islamic-green-dark: 0 0% 0%;
+  }
 }
 
 @layer base {

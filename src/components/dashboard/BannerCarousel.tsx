@@ -60,7 +60,7 @@ export default function BannerCarousel() {
   };
 
   const content = (
-    <div className="relative rounded-xl overflow-hidden shadow-lg aspect-[3/1] min-h-[120px] group">
+    <div className="relative rounded-xl overflow-hidden shadow-lg aspect-[4/3] w-full md:max-w-md lg:max-w-xl mx-auto group">
       <img
         src={banner.image_url}
         alt={banner.title}

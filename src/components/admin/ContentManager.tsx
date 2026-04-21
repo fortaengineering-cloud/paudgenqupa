@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Save } from "lucide-react";
+import { logActivity } from "@/lib/logger";
 
 interface SiteContent {
   id: string;
@@ -44,6 +45,7 @@ export default function ContentManager() {
     if (error) {
       toast({ title: "Gagal", description: error.message, variant: "destructive" });
     } else {
+      logActivity(`Perbarui Konten`, `Mengubah konten bagian ${keyLabels[item.key] || item.key}`);
       toast({ title: "Berhasil!", description: "Konten berhasil diperbarui." });
     }
     setSaving(null);

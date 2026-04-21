@@ -167,21 +167,38 @@ export default function DashboardPage() {
             <p className="text-gray-500 text-sm mt-1">Kelola pendaftaran calon siswa</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {children.length > 0 && (
-              <Button onClick={handleRegisterSibling} variant="outline" className="border-emerald-600 text-emerald-700 hover:bg-emerald-50">
-                <Users className="h-4 w-4 mr-1" /> Daftarkan Kakak/Adik
+            {children.length === 0 ? (
+              // Jika belum ada data anak sama sekali
+              <Button onClick={() => {
+                localStorage.removeItem('ppdbFormData');
+                localStorage.removeItem('ppdbFormStep');
+                localStorage.removeItem('ppdbEditId');
+                navigate("/daftar-ppdb");
+              }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+              >
+                <Plus className="h-4 w-4 mr-1" /> Tambah Data Anak
               </Button>
+            ) : (
+              // Jika sudah ada data anak sebelumnya (Tawarkan opsi hemat waktu sebagai utama)
+              <>
+                <Button onClick={handleRegisterSibling} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm">
+                  <Users className="h-4 w-4 mr-1" /> Daftarkan Kakak/Adik
+                </Button>
+                
+                <Button onClick={() => {
+                  localStorage.removeItem('ppdbFormData');
+                  localStorage.removeItem('ppdbFormStep');
+                  localStorage.removeItem('ppdbEditId');
+                  navigate("/daftar-ppdb");
+                }}
+                  variant="outline"
+                  className="border-gray-300 text-gray-600 hover:bg-gray-50"
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Daftar Baru (Mulai dari Nol)
+                </Button>
+              </>
             )}
-            <Button onClick={() => {
-              localStorage.removeItem('ppdbFormData');
-              localStorage.removeItem('ppdbFormStep');
-              localStorage.removeItem('ppdbEditId');
-              navigate("/daftar-ppdb");
-            }}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
-            >
-              <Plus className="h-4 w-4 mr-1" /> Tambah Data Anak
-            </Button>
           </div>
         </div>
 
