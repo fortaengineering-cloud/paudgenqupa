@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, User, Briefcase, Info } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -12,7 +12,7 @@ export default function RegistrationForm() {
     // --- DATA ANAK ---
     kelasTujuan: '', namaLengkap: '', namaPanggilan: '', nikAnak: '', jenisKelamin: '',
     tempatLahirAnak: '', tanggalLahirAnak: '', statusAnak: '', anakKe: '', jumlahSaudara: '',
-    tinggalBersama: '', jarakSekolah: '', asalSekolah: '', riwayatTilawah: '', jumlahHafalan: '',
+    tinggalBersama: '', jarakSekolah: '', asalSekolah: '', kelasAsal: '', riwayatTilawah: '', jumlahHafalan: '',
 
     // --- DATA AYAH ---
     namaAyah: '', nikAyah: '', tempatLahirAyah: '', tanggalLahirAyah: '', telpAyah: '',
@@ -28,14 +28,29 @@ export default function RegistrationForm() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Handle perubahan input
+  // FITUR ANTI HILANG & AMBIL DATA EDIT DARI DASHBOARD
+  useEffect(() => {
+    const savedData = localStorage.getItem('ppdbFormData');
+    const savedStep = localStorage.getItem('ppdbFormStep');
+    if (savedData) {
+      setFormData(JSON.parse(savedData));
+    }
+    if (savedStep) {
+      setStep(parseInt(savedStep));
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('ppdbFormData', JSON.stringify(formData));
+    localStorage.setItem('ppdbFormStep', step.toString());
+  }, [formData, step]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    setError(''); // Clear error saat user mengetik
+    setError('');
   };
 
-  // Checkbox Copy Alamat Ayah ke Ibu
   const handleCopyAddress = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
       setFormData((prev) => ({
@@ -49,7 +64,6 @@ export default function RegistrationForm() {
     }
   };
 
-  // Validasi sebelum lanjut step
   const handleNext = () => {
     if (step === 1) {
       if (!formData.namaLengkap || !formData.nikAnak) {
@@ -58,7 +72,7 @@ export default function RegistrationForm() {
       }
     } else if (step === 2) {
       if (!formData.namaAyah || !formData.telpAyah) {
-        setError('Nama Lengkap Ayah dan No. Telp/WA wajib diisi.');
+        setError('Nama Lengkap Ayah dan No. Telp/WA Ayah wajib diisi.');
         return;
       }
     }
@@ -71,6 +85,9 @@ export default function RegistrationForm() {
     window.scrollTo(0, 0);
   };
 
+  // ==========================================
+  // FUNGSI SIMPAN YANG SUDAH DIPERBAIKI (BISA UPDATE)
+  // ==========================================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.namaIbu || !formData.telpIbu) {
@@ -82,31 +99,53 @@ export default function RegistrationForm() {
     setError('');
 
     try {
-      // 1. Ambil ID User yang sedang login
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Sesi berakhir, silakan login kembali.");
 
-      // 2. Simpan ke tabel children
-      const { error: insertError } = await supabase
-        .from('children')
-        .insert([
-          {
-            full_name: formData.namaLengkap,
-            birth_place: formData.tempatLahirAnak,
-            birth_date: formData.tanggalLahirAnak,
-            gender: formData.jenisKelamin,
-            child_order: parseInt(formData.anakKe) || 1,
-            address: formData.alamatAyah,
-            parent_id: user.id, // Supaya terhubung otomatis ke akun pengisi
-            status: 'pending',
-            metadata: formData // Menyimpan seluruh data form ke kolom jsonb metadata
-          },
-        ]);
+      // CEK APAKAH INI MODE EDIT DARI DASHBOARD?
+      const editId = localStorage.getItem('ppdbEditId');
 
-      if (insertError) throw insertError;
+      const payload = {
+        full_name: formData.namaLengkap,
+        birth_place: formData.tempatLahirAnak,
+        birth_date: formData.tanggalLahirAnak || null,
+        gender: formData.jenisKelamin,
+        child_order: parseInt(formData.anakKe) || 1,
+        address: formData.alamatAyah,
+        parent_id: user.id,
+        status: 'pending',
+        metadata: formData // Mengirim seluruh data JSON ke tabel
+      };
 
-      alert('Pendaftaran Berhasil Disimpan!');
-      navigate('/dashboard'); // Kembali ke dashboard
+      if (editId) {
+        // --- MODE EDIT (UPDATE) ---
+        const { error: updateError } = await supabase
+          .from('children')
+          .update(payload)
+          .eq('id', editId);
+
+        if (updateError) throw updateError;
+
+        // Hapus penanda mode edit setelah sukses
+        localStorage.removeItem('ppdbEditId');
+        alert('Perubahan Data Berhasil Disimpan!');
+
+      } else {
+        // --- MODE BARU (INSERT) ---
+        const { error: insertError } = await supabase
+          .from('children')
+          .insert([payload]);
+
+        if (insertError) throw insertError;
+        alert('Pendaftaran Baru Berhasil Disimpan!');
+      }
+
+      // Bersihkan Form
+      localStorage.removeItem('ppdbFormData');
+      localStorage.removeItem('ppdbFormStep');
+
+      navigate('/dashboard');
+
     } catch (err: any) {
       setError('Gagal menyimpan data: ' + err.message);
       console.error(err);
@@ -114,20 +153,21 @@ export default function RegistrationForm() {
       setIsSubmitting(false);
     }
   };
+  // ==========================================
 
-  // Helper untuk styling input seragam
   const inputClass = "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-colors";
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6 lg:p-8 bg-gray-50 min-h-screen">
-      {/* Header */}
-      <button onClick={() => navigate('/dashboard')} className="flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 mb-6 transition-colors">
+      <button onClick={() => {
+        localStorage.removeItem('ppdbEditId'); // Bersihkan mode edit jika batal
+        navigate('/dashboard');
+      }} className="flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 mb-6 transition-colors">
         <ArrowLeft className="w-4 h-4 mr-2" />
         Kembali ke Dashboard
       </button>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        {/* Title & Step Indicator */}
         <div className="bg-orange-50/50 p-6 md:p-10 text-center border-b border-gray-100">
           <h1 className="text-2xl font-bold text-red-900 mb-6">Formulir Pendaftaran Peserta Didik Baru</h1>
 
@@ -146,7 +186,6 @@ export default function RegistrationForm() {
           </p>
         </div>
 
-        {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 md:p-10">
 
           {error && (
@@ -179,26 +218,28 @@ export default function RegistrationForm() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap *</label>
-                    <input type="text" name="namaLengkap" value={formData.namaLengkap} onChange={handleInputChange} className={inputClass} placeholder="Masukkan nama lengkap anak" required />
+                    <input type="text" name="namaLengkap" value={formData.namaLengkap} onChange={handleInputChange} className={inputClass} required />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Nama Panggilan</label>
-                    <input type="text" name="namaPanggilan" value={formData.namaPanggilan} onChange={handleInputChange} className={inputClass} placeholder="Masukkan nama panggilan" />
+                    <input type="text" name="namaPanggilan" value={formData.namaPanggilan} onChange={handleInputChange} className={inputClass} />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">NIK Anak *</label>
-                    <input type="text" name="nikAnak" value={formData.nikAnak} onChange={handleInputChange} className={inputClass} placeholder="16 digit NIK" required maxLength={16} />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">NIK</label>
+                    <input type="text" name="nikAnak" value={formData.nikAnak} onChange={handleInputChange} className={inputClass} maxLength={16} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Jenis Kelamin</label>
                     <div className="flex space-x-4 mt-2">
-                      {['Laki-laki', 'Perempuan'].map((gender) => (
-                        <label key={gender} className="flex items-center cursor-pointer">
-                          <input type="radio" name="jenisKelamin" value={gender} checked={formData.jenisKelamin === gender} onChange={handleInputChange} className="text-emerald-600 focus:ring-emerald-600 w-4 h-4" />
-                          <span className="ml-2 text-sm text-gray-700">{gender}</span>
-                        </label>
-                      ))}
+                      <label className="flex items-center">
+                        <input type="radio" name="jenisKelamin" value="Laki-laki" onChange={handleInputChange} checked={formData.jenisKelamin === 'Laki-laki'} className="text-emerald-600 focus:ring-emerald-600 w-4 h-4" />
+                        <span className="ml-2 text-sm text-gray-700">Laki-laki</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input type="radio" name="jenisKelamin" value="Perempuan" onChange={handleInputChange} checked={formData.jenisKelamin === 'Perempuan'} className="text-emerald-600 focus:ring-emerald-600 w-4 h-4" />
+                        <span className="ml-2 text-sm text-gray-700">Perempuan</span>
+                      </label>
                     </div>
                   </div>
 
@@ -217,7 +258,7 @@ export default function RegistrationForm() {
                 <h2 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Data Tambahan Anak</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Status Anak</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Status anak</label>
                     <select name="statusAnak" value={formData.statusAnak} onChange={handleInputChange} className={inputClass}>
                       <option value="">Pilih status</option>
                       <option value="Anak Kandung">Anak Kandung</option>
@@ -228,11 +269,11 @@ export default function RegistrationForm() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Anak Ke-</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Anak ke</label>
                       <input type="number" name="anakKe" value={formData.anakKe} onChange={handleInputChange} className={inputClass} min="1" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Jumlah Bersaudara</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Jumlah Bersaudara Kandung</label>
                       <input type="number" name="jumlahSaudara" value={formData.jumlahSaudara} onChange={handleInputChange} className={inputClass} min="0" />
                     </div>
                   </div>
@@ -246,19 +287,23 @@ export default function RegistrationForm() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Jarak Tempat tinggal ke Rufizh GenQuPa - Cipacung</label>
-                    <input type="text" name="jarakSekolah" value={formData.jarakSekolah} onChange={handleInputChange} className={inputClass} placeholder="Contoh: 2 km" />
+                    <input type="text" name="jarakSekolah" value={formData.jarakSekolah} onChange={handleInputChange} className={inputClass} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Asal Sekolah (Jika Ada)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Sekolah</label>
                     <input type="text" name="asalSekolah" value={formData.asalSekolah} onChange={handleInputChange} className={inputClass} placeholder="Nama PAUD/TK sebelumnya" />
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
+                    <input type="text" name="kelasAsal" value={formData.kelasAsal} onChange={handleInputChange} className={inputClass} />
+                  </div>
                   <div className="col-span-1 md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Riwayat Belajar Tilawah / Baca Quran</label>
-                    <textarea name="riwayatTilawah" value={formData.riwayatTilawah} onChange={handleInputChange} className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 min-h-[80px]" placeholder="Ceritakan riwayat mengaji anak..."></textarea>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Riwayat Belajar Tilawah/Baca Quran</label>
+                    <textarea name="riwayatTilawah" value={formData.riwayatTilawah} onChange={handleInputChange} className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 min-h-[80px]"></textarea>
                   </div>
                   <div className="col-span-1 md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Jumlah Hafalan yang dimiliki saat ini</label>
-                    <input type="text" name="jumlahHafalan" value={formData.jumlahHafalan} onChange={handleInputChange} className={inputClass} placeholder="Contoh: Juz 30 (Surah An-Naba s.d An-Nas)" />
+                    <input type="text" name="jumlahHafalan" value={formData.jumlahHafalan} onChange={handleInputChange} className={inputClass} />
                   </div>
                 </div>
               </div>
@@ -281,20 +326,12 @@ export default function RegistrationForm() {
                     <input type="text" name="namaAyah" value={formData.namaAyah} onChange={handleInputChange} className={inputClass} required />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">NIK Ayah</label>
-                    <input type="text" name="nikAyah" value={formData.nikAyah} onChange={handleInputChange} className={inputClass} maxLength={16} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Tempat Lahir Ayah</label>
-                    <input type="text" name="tempatLahirAyah" value={formData.tempatLahirAyah} onChange={handleInputChange} className={inputClass} />
-                  </div>
-                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Lahir Ayah</label>
                     <input type="date" name="tanggalLahirAyah" value={formData.tanggalLahirAyah} onChange={handleInputChange} className={inputClass} />
                   </div>
                   <div className="col-span-1 md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">No. Telp / WA Aktif *</label>
-                    <input type="tel" name="telpAyah" value={formData.telpAyah} onChange={handleInputChange} className={inputClass} placeholder="0812..." required />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">No Telp/WA Ayah *</label>
+                    <input type="tel" name="telpAyah" value={formData.telpAyah} onChange={handleInputChange} className={inputClass} required />
                   </div>
                 </div>
               </div>
@@ -308,27 +345,27 @@ export default function RegistrationForm() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="col-span-1 md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Alamat Rumah Lengkap</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Alamat Rumah</label>
                     <textarea name="alamatAyah" value={formData.alamatAyah} onChange={handleInputChange} className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600" rows={2}></textarea>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Desa / Kelurahan</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nama Desa/Kelurahan</label>
                     <input type="text" name="desaAyah" value={formData.desaAyah} onChange={handleInputChange} className={inputClass} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Kecamatan</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nama Kecamatan</label>
                     <input type="text" name="kecamatanAyah" value={formData.kecamatanAyah} onChange={handleInputChange} className={inputClass} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Kabupaten</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nama Kabupaten</label>
                     <input type="text" name="kabupatenAyah" value={formData.kabupatenAyah} onChange={handleInputChange} className={inputClass} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Provinsi</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nama Provinsi</label>
                     <input type="text" name="provinsiAyah" value={formData.provinsiAyah} onChange={handleInputChange} className={inputClass} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Pekerjaan Utama</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Pekerjaan</label>
                     <input type="text" name="pekerjaanAyah" value={formData.pekerjaanAyah} onChange={handleInputChange} className={inputClass} />
                   </div>
                   <div>
@@ -356,20 +393,12 @@ export default function RegistrationForm() {
                     <input type="text" name="namaIbu" value={formData.namaIbu} onChange={handleInputChange} className={inputClass} required />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">NIK Ibu</label>
-                    <input type="text" name="nikIbu" value={formData.nikIbu} onChange={handleInputChange} className={inputClass} maxLength={16} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Tempat Lahir Ibu</label>
-                    <input type="text" name="tempatLahirIbu" value={formData.tempatLahirIbu} onChange={handleInputChange} className={inputClass} />
-                  </div>
-                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Lahir Ibu</label>
                     <input type="date" name="tanggalLahirIbu" value={formData.tanggalLahirIbu} onChange={handleInputChange} className={inputClass} />
                   </div>
                   <div className="col-span-1 md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">No. Telp / WA Aktif *</label>
-                    <input type="tel" name="telpIbu" value={formData.telpIbu} onChange={handleInputChange} className={inputClass} placeholder="0812..." required />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">No Telp/WA *</label>
+                    <input type="tel" name="telpIbu" value={formData.telpIbu} onChange={handleInputChange} className={inputClass} required />
                   </div>
                 </div>
               </div>
@@ -389,36 +418,36 @@ export default function RegistrationForm() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="col-span-1 md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Alamat Rumah Lengkap</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Alamat Rumah</label>
                     <textarea name="alamatIbu" value={formData.alamatIbu} onChange={handleInputChange} className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600" rows={2}></textarea>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Desa / Kelurahan</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nama Desa/Kelurahan</label>
                     <input type="text" name="desaIbu" value={formData.desaIbu} onChange={handleInputChange} className={inputClass} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Kecamatan</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nama Kecamatan</label>
                     <input type="text" name="kecamatanIbu" value={formData.kecamatanIbu} onChange={handleInputChange} className={inputClass} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Kabupaten</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nama Kabupaten</label>
                     <input type="text" name="kabupatenIbu" value={formData.kabupatenIbu} onChange={handleInputChange} className={inputClass} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Provinsi</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nama Provinsi</label>
                     <input type="text" name="provinsiIbu" value={formData.provinsiIbu} onChange={handleInputChange} className={inputClass} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Pekerjaan Utama</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Pekerjaan Ibu</label>
                     <input type="text" name="pekerjaanIbu" value={formData.pekerjaanIbu} onChange={handleInputChange} className={inputClass} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Alamat Pekerjaan</label>
                     <input type="text" name="alamatKerjaIbu" value={formData.alamatKerjaIbu} onChange={handleInputChange} className={inputClass} />
                   </div>
-                  <div>
+                  <div className="col-span-1 md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Akun IG Orang Tua</label>
-                    <input type="text" name="akunIg" value={formData.akunIg} onChange={handleInputChange} className={inputClass} placeholder="@username" />
+                    <input type="text" name="akunIg" value={formData.akunIg} onChange={handleInputChange} className={inputClass} />
                   </div>
                 </div>
               </div>
@@ -436,7 +465,12 @@ export default function RegistrationForm() {
             </div>
 
             <div className="flex space-x-4">
-              <button type="button" onClick={() => navigate('/dashboard')} disabled={isSubmitting} className="px-6 py-2.5 rounded-md text-gray-500 font-medium hover:text-gray-700 transition-colors">
+              <button type="button" onClick={() => {
+                localStorage.removeItem('ppdbFormData');
+                localStorage.removeItem('ppdbFormStep');
+                localStorage.removeItem('ppdbEditId'); // Tambahan: bersihkan id edit saat batal
+                navigate('/dashboard');
+              }} disabled={isSubmitting} className="px-6 py-2.5 rounded-md text-gray-500 font-medium hover:text-gray-700 transition-colors">
                 Batal
               </button>
 

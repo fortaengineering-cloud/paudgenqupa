@@ -6,9 +6,8 @@ import { logout } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
 import BannerCarousel from "@/components/dashboard/BannerCarousel";
-import { LogOut, Plus, Baby, Calendar, MapPin, User } from "lucide-react";
+import { LogOut, Plus, Baby, Calendar, MapPin, User, Edit } from "lucide-react";
 
 interface Child {
   id: string;
@@ -19,11 +18,12 @@ interface Child {
   child_order: number;
   address: string | null;
   status: "pending" | "verified" | "rejected";
+  metadata: any;
 }
 
 const statusConfig = {
-  pending: { label: "Menunggu", variant: "secondary" as const },
-  verified: { label: "Terverifikasi", variant: "default" as const },
+  pending: { label: "Menunggu Verifikasi", variant: "secondary" as const },
+  verified: { label: "Diterima / Terverifikasi", variant: "default" as const },
   rejected: { label: "Ditolak", variant: "destructive" as const },
 };
 
@@ -31,7 +31,6 @@ export default function DashboardPage() {
   const { user, profile, loading } = useAuth();
   const [children, setChildren] = useState<Child[]>([]);
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -39,18 +38,17 @@ export default function DashboardPage() {
     }
   }, [user, loading, navigate]);
 
+  // Mengambil data menggunakan user.id langsung agar akurat
   useEffect(() => {
-    if (profile) {
-      fetchChildren();
-    }
-  }, [profile]);
+    if (user) fetchChildren();
+  }, [user]);
 
   const fetchChildren = async () => {
-    if (!profile) return;
+    if (!user) return;
     const { data } = await supabase
       .from("children")
       .select("*")
-      .eq("parent_id", profile.id)
+      .eq("parent_id", user.id)
       .order("created_at", { ascending: true });
     if (data) setChildren(data as Child[]);
   };
@@ -60,30 +58,36 @@ export default function DashboardPage() {
     navigate("/");
   };
 
+  // FUNGSI UNTUK MENGIRIM DATA LAMA KE HALAMAN FORM (EDIT MODE)
+  const handleEdit = (child: Child) => {
+    localStorage.setItem('ppdbFormData', JSON.stringify(child.metadata || {}));
+    localStorage.setItem('ppdbEditId', child.id);
+    localStorage.setItem('ppdbFormStep', '1');
+    navigate('/daftar-ppdb');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-accent/30">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-background border-b sticky top-0 z-50">
+      <header className="bg-white border-b sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full gradient-islamic flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">G</span>
-            </div>
-            <span className="font-bold text-foreground">PAUD GenQuPa</span>
+            <img src="/logo.png" alt="Logo GenQuPa" className="w-8 h-8 object-contain" />
+            <span className="font-bold text-emerald-900">PAUD GenQuPa</span>
           </Link>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground hidden sm:block">
-              Halo, {profile?.name}
+            <span className="text-sm text-gray-600 hidden sm:block">
+              Halo, {profile?.name || 'Orang Tua'}
             </span>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
+            <Button variant="outline" size="sm" onClick={handleLogout} className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200">
               <LogOut className="h-4 w-4" />
               <span className="hidden sm:inline ml-1">Keluar</span>
             </Button>
@@ -91,64 +95,70 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6 space-y-6">
-        {/* Banner Carousel */}
+      <div className="container mx-auto px-4 py-6 space-y-6 max-w-5xl">
         <BannerCarousel />
 
-        {/* Welcome */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Dashboard Orang Tua</h1>
-            <p className="text-muted-foreground text-sm">Kelola data pendaftaran anak Anda</p>
+            <h1 className="text-2xl font-bold text-gray-800">Dashboard Orang Tua</h1>
+            <p className="text-gray-500 text-sm mt-1">Kelola pendaftaran calon siswa</p>
           </div>
-          {/* Tombol ini sekarang mengarah ke form 3 halaman */}
-          <Button onClick={() => navigate("/daftar-ppdb")} className="gradient-islamic border-0">
-            <Plus className="h-4 w-4" />
-            <span className="ml-1">Tambah Anak</span>
+          <Button onClick={() => {
+            // Jika tambah data baru, bersihkan memori editan lama
+            localStorage.removeItem('ppdbFormData');
+            localStorage.removeItem('ppdbFormStep');
+            localStorage.removeItem('ppdbEditId');
+            navigate("/daftar-ppdb");
+          }}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+          >
+            <Plus className="h-4 w-4 mr-1" /> Tambah Data Anak
           </Button>
         </div>
 
-        {/* Children List */}
+        {/* Daftar Anak */}
         {children.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="py-12 text-center">
-              <Baby className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
-              <h3 className="font-semibold text-foreground mb-2">Belum ada data anak</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Klik "Tambah Anak" untuk mendaftarkan anak Anda
-              </p>
-              {/* Tombol ini juga mengarah ke form 3 halaman */}
-              <Button onClick={() => navigate("/daftar-ppdb")} variant="outline">
-                <Plus className="h-4 w-4" />
-                <span className="ml-1">Tambah Anak Pertama</span>
-              </Button>
+          <Card className="border-dashed bg-transparent shadow-none border-2 border-gray-200">
+            <CardContent className="py-16 text-center">
+              <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Baby className="h-8 w-8" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Belum ada data pendaftaran</h3>
+              <p className="text-sm text-gray-500 mb-6">Klik tombol di atas untuk mulai mendaftarkan anak Anda.</p>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-2 gap-4">
             {children.map((child) => (
-              <Card key={child.id} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <CardTitle className="text-lg">{child.full_name}</CardTitle>
-                    <Badge variant={statusConfig[child.status].variant}>
-                      {statusConfig[child.status].label}
-                    </Badge>
+              <Card key={child.id} className="hover:shadow-md transition-all border-gray-100 overflow-hidden">
+                <div className={`h-2 w-full ${child.status === 'pending' ? 'bg-orange-400' : child.status === 'rejected' ? 'bg-red-500' : 'bg-emerald-500'}`}></div>
+                <CardHeader className="pb-3 bg-white">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex justify-between items-start">
+                      <CardTitle className="text-lg text-gray-800">{child.full_name}</CardTitle>
+                      <Badge variant={statusConfig[child.status].variant}>{statusConfig[child.status].label}</Badge>
+                    </div>
+                    {/* TOMBOL EDIT DATA (Hanya untuk yang statusnya pending) */}
+                    {child.status === 'pending' && (
+                      <Button variant="outline" size="sm" onClick={() => handleEdit(child)} className="w-fit text-emerald-700 border-emerald-200 hover:bg-emerald-50 h-8 mt-1">
+                        <Edit className="h-3.5 w-3.5 mr-1" /> Edit Formulir
+                      </Button>
+                    )}
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-2 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    <span>{child.gender} — Anak ke-{child.child_order}</span>
+                <CardContent className="space-y-3 pt-4 text-sm text-gray-600 bg-gray-50/50">
+                  <div className="flex items-center gap-3">
+                    <div className="p-1.5 bg-white rounded-md border border-gray-100 shadow-sm"><User className="h-4 w-4 text-emerald-600" /></div>
+                    <span>{child.gender || "-"} — Anak ke-{child.child_order || "-"}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    <span>{child.birth_place}, {new Date(child.birth_date).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</span>
+                  <div className="flex items-center gap-3">
+                    <div className="p-1.5 bg-white rounded-md border border-gray-100 shadow-sm"><Calendar className="h-4 w-4 text-emerald-600" /></div>
+                    <span>{child.birth_place || "-"}, {child.birth_date ? new Date(child.birth_date).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "-"}</span>
                   </div>
                   {child.address && (
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      <span>{child.address}</span>
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 bg-white rounded-md border border-gray-100 shadow-sm"><MapPin className="h-4 w-4 text-emerald-600" /></div>
+                      <span className="line-clamp-1">{child.address}</span>
                     </div>
                   )}
                 </CardContent>
