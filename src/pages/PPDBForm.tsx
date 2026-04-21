@@ -9,7 +9,7 @@ export default function RegistrationForm() {
   const navigate = useNavigate();
   const { profile } = useAuth();
 
-  // --- STATE DATA FORM (STRUKTUR LENGKAP 498 BARIS) ---
+  // --- STATE DATA FORM (STRUKTUR LENGKAP 500+ BARIS) ---
   const [formData, setFormData] = useState({
     // IDENTITAS ANAK
     kelasTujuan: '',
@@ -60,12 +60,13 @@ export default function RegistrationForm() {
     akunIg: ''
   });
 
-  // State File & Preview Thumbnail
+  // State File & Preview Thumbnail (5 JENIS DOKUMEN SEKARANG)
   const [files, setFiles] = useState<{ [key: string]: File | null }>({
     foto: null,
     kk: null,
     akte: null,
-    ktp: null
+    ktp_ayah: null,
+    ktp_ibu: null
   });
   const [previews, setPreviews] = useState<{ [key: string]: string }>({});
 
@@ -73,7 +74,7 @@ export default function RegistrationForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditMode = !!localStorage.getItem('ppdbEditId');
 
-  // LOAD DATA CACHE ATAU DATA LAMA DARI DATABASE
+  // LOAD DATA CACHE ATAU DATA LAMA
   useEffect(() => {
     const savedData = localStorage.getItem('ppdbFormData');
     const savedStep = localStorage.getItem('ppdbFormStep');
@@ -81,12 +82,13 @@ export default function RegistrationForm() {
       const parsed = JSON.parse(savedData);
       setFormData(parsed);
 
-      // Jika dalam mode edit, munculkan kembali thumbnail dari link lama
+      // Munculkan kembali thumbnail jika ada di metadata (untuk mode edit)
       const oldPreviews: any = {};
       if (parsed.foto) oldPreviews.foto = parsed.foto;
       if (parsed.kk) oldPreviews.kk = parsed.kk;
       if (parsed.akte) oldPreviews.akte = parsed.akte;
-      if (parsed.ktp) oldPreviews.ktp = parsed.ktp;
+      if (parsed.ktp_ayah) oldPreviews.ktp_ayah = parsed.ktp_ayah;
+      if (parsed.ktp_ibu) oldPreviews.ktp_ibu = parsed.ktp_ibu;
       setPreviews(oldPreviews);
     }
     if (savedStep) {
@@ -165,7 +167,6 @@ export default function RegistrationForm() {
       if (!profile?.id) throw new Error("Sesi berakhir, silakan login kembali.");
       const editId = localStorage.getItem('ppdbEditId');
 
-      // Siapkan variabel untuk menampung Link URL file
       let uploadedUrls: { [key: string]: string } = {};
 
       // 1. PROSES UPLOAD FILE KE STORAGE
@@ -215,7 +216,7 @@ export default function RegistrationForm() {
         alert('Pendaftaran Berhasil Terkirim!');
       }
 
-      // 4. BERSIHKAN CACHE SETELAH BERHASIL
+      // 4. BERSIHKAN CACHE
       localStorage.removeItem('ppdbFormData');
       localStorage.removeItem('ppdbFormStep');
       localStorage.removeItem('ppdbEditId');
@@ -232,7 +233,7 @@ export default function RegistrationForm() {
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6 lg:p-8 bg-gray-50 min-h-screen">
-      <button type="button" onClick={() => navigate('/dashboard')} className="flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 mb-6">
+      <button type="button" onClick={() => navigate('/dashboard')} className="flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 mb-6 transition-colors">
         <ArrowLeft className="w-4 h-4 mr-2" /> Kembali ke Dashboard
       </button>
 
@@ -250,14 +251,14 @@ export default function RegistrationForm() {
             ))}
           </div>
           <p className="mt-4 font-bold text-emerald-900 uppercase tracking-wide text-sm">
-            {step === 1 ? 'Identitas Anak' : step === 2 ? 'Data Ayah' : step === 3 ? 'Data Ibu' : 'Unggah Dokumen'}
+            {step === 1 ? 'Identitas Anak' : step === 2 ? 'Identitas Ayah' : step === 3 ? 'Identitas Ibu' : 'Upload Dokumen'}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 md:p-10">
           {error && <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-md border border-red-100 flex items-start"><Info className="w-5 h-5 mr-3 shrink-0" /><p className="text-sm font-medium">{error}</p></div>}
 
-          {/* STEP 1: DATA ANAK */}
+          {/* ================= STEP 1: DATA ANAK ================= */}
           <div className={step === 1 ? 'space-y-8 animate-in' : 'hidden'}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -353,7 +354,7 @@ export default function RegistrationForm() {
             </div>
           </div>
 
-          {/* STEP 2: DATA AYAH */}
+          {/* ================= STEP 2: DATA AYAH ================= */}
           <div className={step === 2 ? 'space-y-8 animate-in' : 'hidden'}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -399,11 +400,11 @@ export default function RegistrationForm() {
             </div>
           </div>
 
-          {/* STEP 3: DATA IBU */}
+          {/* ================= STEP 3: DATA IBU ================= */}
           <div className={step === 3 ? 'space-y-8 animate-in' : 'hidden'}>
             <div className="flex items-center justify-between mb-6 border-b pb-2">
               <h2 className="text-lg font-bold text-gray-800">Identitas Ibu Kandung</h2>
-              <label className="flex items-center bg-gray-100 px-3 py-1.5 rounded-md cursor-pointer border border-gray-200">
+              <label className="flex items-center bg-gray-100 px-3 py-1.5 rounded-md cursor-pointer border border-gray-200 hover:bg-gray-200 transition-colors">
                 <input type="checkbox" onChange={handleCopyAddress} className="w-4 h-4 text-emerald-600 rounded" />
                 <span className="ml-2 text-xs font-bold text-gray-600 uppercase tracking-tighter">Samakan Alamat Ayah</span>
               </label>
@@ -452,13 +453,13 @@ export default function RegistrationForm() {
             </div>
           </div>
 
-          {/* STEP 4: UPLOAD DOKUMEN (FIXED LOGIC) */}
+          {/* ================= STEP 4: UPLOAD DOKUMEN (FIXED LOGIC) ================= */}
           <div className={step === 4 ? 'space-y-8 animate-in' : 'hidden'}>
             <div className="bg-emerald-50 p-5 rounded-xl border border-emerald-100 flex items-start">
               <UploadCloud className="w-6 h-6 text-emerald-600 mr-3 shrink-0" />
               <div>
                 <h3 className="font-bold text-emerald-900 text-sm">Lampiran Dokumen (Opsional)</h3>
-                <p className="text-xs text-emerald-700 mt-1">Format JPG/PNG/PDF (Maks 2MB). Biarkan kosong jika tidak ingin mengubah dokumen lama.</p>
+                <p className="text-xs text-emerald-700 mt-1">Format JPG/PNG/PDF (Maks 2MB). Biarkan kosong jika tidak ingin mengubah file lama.</p>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -466,7 +467,8 @@ export default function RegistrationForm() {
                 { id: 'foto', label: 'Pas Foto 3x4 Calon Siswa' },
                 { id: 'kk', label: 'Scan Kartu Keluarga' },
                 { id: 'akte', label: 'Scan Akte Kelahiran' },
-                { id: 'ktp', label: 'Scan KTP Orang Tua' }
+                { id: 'ktp_ayah', label: 'Scan KTP Ayah' },
+                { id: 'ktp_ibu', label: 'Scan KTP Ibu' }
               ].map((doc) => (
                 <div key={doc.id} className="p-4 border-2 border-dashed border-gray-200 rounded-xl bg-white hover:border-emerald-400 transition-all flex flex-col items-center">
                   {previews[doc.id] ? (
@@ -484,13 +486,13 @@ export default function RegistrationForm() {
             </div>
           </div>
 
-          {/* NAVIGASI BUTTONS */}
+          {/* ================= NAVIGATION BUTTONS ================= */}
           <div className="mt-12 flex items-center justify-between pt-8 border-t border-gray-100">
             <button type="button" onClick={handlePrev} disabled={isSubmitting || step === 1} className="px-8 py-2.5 rounded-md border border-gray-300 text-gray-700 font-bold hover:bg-gray-50 disabled:opacity-30 transition-all">Sebelumnya</button>
             <div className="flex space-x-4 items-center">
               <button type="button" onClick={() => { localStorage.removeItem('ppdbEditId'); navigate('/dashboard'); }} className="text-gray-400 font-bold hover:text-gray-600 text-sm">Batal</button>
               {step < 4 ? (
-                <button type="button" onClick={handleNext} className="px-10 py-2.5 rounded-md bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-md transition-all active:scale-95">Selanjutnya</button>
+                <button type="button" onClick={handleNext} className="px-10 py-2.5 rounded-md bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-md active:scale-95 transition-all">Selanjutnya</button>
               ) : (
                 <button type="submit" disabled={isSubmitting} className="px-10 py-2.5 rounded-md bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-md flex items-center active:scale-95 transition-all">
                   {isSubmitting ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div> Menyimpan...</> : (isEditMode ? 'Simpan Perubahan' : 'Kirim Pendaftaran')}
