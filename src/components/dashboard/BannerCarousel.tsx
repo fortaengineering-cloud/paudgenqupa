@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ExternalLink } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, ExternalLink } from "lucide-react";
 
 interface Banner {
   id: string;
@@ -10,9 +10,16 @@ interface Banner {
   is_active: boolean;
 }
 
+const DEFAULT_INTERVAL = 5000;
+
 export default function BannerCarousel() {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [interval, setIntervalMs] = useState<number>(() => {
+    const stored = Number(localStorage.getItem("bannerIntervalMs"));
+    return stored && stored >= 1000 ? stored : DEFAULT_INTERVAL;
+  });
 
   useEffect(() => {
     supabase
@@ -26,19 +33,34 @@ export default function BannerCarousel() {
   }, []);
 
   useEffect(() => {
-    if (banners.length <= 1) return;
-    const interval = setInterval(() => {
+    if (banners.length <= 1 || isPaused) return;
+    const id = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % banners.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [banners.length]);
+    }, interval);
+    return () => clearInterval(id);
+  }, [banners.length, isPaused, interval]);
 
   if (banners.length === 0) return null;
 
   const banner = banners[currentIndex];
+  const goPrev = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCurrentIndex((prev) => (prev - 1 + banners.length) % banners.length);
+  };
+  const goNext = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCurrentIndex((prev) => (prev + 1) % banners.length);
+  };
+  const togglePause = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsPaused((p) => !p);
+  };
 
   const content = (
-    <div className="relative rounded-xl overflow-hidden shadow-lg aspect-[3/1] min-h-[120px]">
+    <div className="relative rounded-xl overflow-hidden shadow-lg aspect-[3/1] min-h-[120px] group">
       <img
         src={banner.image_url}
         alt={banner.title}
@@ -52,17 +74,45 @@ export default function BannerCarousel() {
         )}
       </div>
 
-      {/* Dots */}
       {banners.length > 1 && (
-        <div className="absolute bottom-2 right-4 flex gap-1">
-          {banners.map((_, i) => (
-            <button
-              key={i}
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentIndex(i); }}
-              className={`w-2 h-2 rounded-full transition-colors ${i === currentIndex ? "bg-background" : "bg-background/40"}`}
-            />
-          ))}
-        </div>
+        <>
+          {/* Arrows */}
+          <button
+            onClick={goPrev}
+            aria-label="Banner sebelumnya"
+            className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/70 hover:bg-background text-foreground rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <button
+            onClick={goNext}
+            aria-label="Banner berikutnya"
+            className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/70 hover:bg-background text-foreground rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+
+          {/* Pause/Play */}
+          <button
+            onClick={togglePause}
+            aria-label={isPaused ? "Putar slide" : "Jeda slide"}
+            className="absolute top-2 right-2 bg-background/70 hover:bg-background text-foreground rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            {isPaused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+          </button>
+
+          {/* Dots */}
+          <div className="absolute bottom-2 right-4 flex gap-1">
+            {banners.map((_, i) => (
+              <button
+                key={i}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentIndex(i); }}
+                className={`w-2 h-2 rounded-full transition-colors ${i === currentIndex ? "bg-background" : "bg-background/40"}`}
+                aria-label={`Slide ${i + 1}`}
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
