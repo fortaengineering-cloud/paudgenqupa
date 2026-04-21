@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Pause, Play, ExternalLink } from "lucide-rea
 interface Banner {
   id: string;
   title: string;
+  description?: string;
   image_url: string;
   link_url: string | null;
   is_active: boolean;
@@ -60,18 +61,32 @@ export default function BannerCarousel() {
   };
 
   const content = (
-    <div className="relative rounded-xl overflow-hidden shadow-lg aspect-[4/3] w-full md:max-w-md lg:max-w-xl mx-auto group">
+    <div className="relative rounded-xl overflow-hidden shadow-lg aspect-[4/3] w-full md:max-w-md lg:max-w-xl mx-auto group bg-muted">
       <img
         src={banner.image_url}
         alt={banner.title}
         className="w-full h-full object-cover"
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 to-transparent" />
-      <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between">
-        <p className="text-background font-semibold text-sm md:text-base">{banner.title}</p>
-        {banner.link_url && (
-          <ExternalLink className="h-4 w-4 text-background flex-shrink-0" />
-        )}
+      
+      {/* Caption at the bottom - bright and clear */}
+      <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm p-4 border-t border-primary/10 transition-transform duration-300">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1">
+            <h3 className="text-primary font-bold text-sm md:text-base leading-tight">
+              {banner.title}
+            </h3>
+            {banner.description && (
+              <p className="text-muted-foreground text-[10px] md:text-xs mt-1 line-clamp-2">
+                {banner.description}
+              </p>
+            )}
+          </div>
+          {banner.link_url && (
+            <div className="bg-primary/10 rounded-full p-1.5 shrink-0 group-hover:bg-primary/20 transition-colors">
+              <ExternalLink className="h-3.5 w-3.5 text-primary" />
+            </div>
+          )}
+        </div>
       </div>
 
       {banners.length > 1 && (
@@ -80,14 +95,14 @@ export default function BannerCarousel() {
           <button
             onClick={goPrev}
             aria-label="Banner sebelumnya"
-            className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/70 hover:bg-background text-foreground rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute left-2 top-[40%] -translate-y-1/2 bg-white/80 hover:bg-white text-primary rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all shadow-md"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
           <button
             onClick={goNext}
             aria-label="Banner berikutnya"
-            className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/70 hover:bg-background text-foreground rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute right-2 top-[40%] -translate-y-1/2 bg-white/80 hover:bg-white text-primary rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all shadow-md"
           >
             <ChevronRight className="h-5 w-5" />
           </button>
@@ -96,19 +111,17 @@ export default function BannerCarousel() {
           <button
             onClick={togglePause}
             aria-label={isPaused ? "Putar slide" : "Jeda slide"}
-            className="absolute top-2 right-2 bg-background/70 hover:bg-background text-foreground rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute top-2 right-2 bg-white/80 hover:bg-white text-primary rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all shadow-md"
           >
             {isPaused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
           </button>
 
-          {/* Dots */}
-          <div className="absolute bottom-2 right-4 flex gap-1">
+          {/* Indicators for current slide position */}
+          <div className="absolute top-2 left-4 flex gap-1">
             {banners.map((_, i) => (
-              <button
+              <div 
                 key={i}
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentIndex(i); }}
-                className={`w-2 h-2 rounded-full transition-colors ${i === currentIndex ? "bg-background" : "bg-background/40"}`}
-                aria-label={`Slide ${i + 1}`}
+                className={`h-1 rounded-full transition-all duration-300 ${i === currentIndex ? "w-6 bg-primary" : "w-2 bg-primary/30"}`}
               />
             ))}
           </div>
@@ -119,7 +132,7 @@ export default function BannerCarousel() {
 
   if (banner.link_url) {
     return (
-      <a href={banner.link_url} target="_blank" rel="noopener noreferrer">
+      <a href={banner.link_url} target="_blank" rel="noopener noreferrer" className="block">
         {content}
       </a>
     );

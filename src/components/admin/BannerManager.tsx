@@ -12,6 +12,7 @@ import { logActivity } from "@/lib/logger";
 interface Banner {
   id: string;
   title: string;
+  description?: string;
   image_url: string;
   link_url: string | null;
   is_active: boolean;
@@ -22,6 +23,7 @@ export default function BannerManager() {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [uploading, setUploading] = useState(false);
   const [newTitle, setNewTitle] = useState("");
+  const [newDesc, setNewDesc] = useState("");
   const [newLink, setNewLink] = useState("");
   const [intervalSec, setIntervalSec] = useState<number>(() => {
     const stored = Number(localStorage.getItem("bannerIntervalMs"));
@@ -107,6 +109,7 @@ export default function BannerManager() {
 
     const { error } = await supabase.from("banners").insert({
       title: newTitle.trim(),
+      description: newDesc.trim(),
       image_url: publicUrl,
       link_url: newLink.trim() || null,
       sort_order: banners.length,
@@ -117,6 +120,7 @@ export default function BannerManager() {
     } else {
       logActivity(`Kelola Banner`, `Menambahkan banner baru: ${newTitle.trim()}`);
       setNewTitle("");
+      setNewDesc("");
       setNewLink("");
       fetchBanners();
       toast({ title: "Berhasil!", description: "Banner ditambahkan." });
@@ -204,6 +208,14 @@ export default function BannerManager() {
               />
             </div>
           </div>
+          <div className="space-y-2">
+            <Label>Deskripsi Banner (opsional)</Label>
+            <Input
+              placeholder="Deskripsi singkat yang akan muncul di caption"
+              value={newDesc}
+              onChange={(e) => setNewDesc(e.target.value)}
+            />
+          </div>
           <div>
             <Label htmlFor="banner-upload" className="cursor-pointer">
               <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary transition-colors">
@@ -243,6 +255,9 @@ export default function BannerManager() {
                 />
                 <div className="flex-1 space-y-2">
                   <h3 className="font-semibold text-foreground">{banner.title}</h3>
+                  {banner.description && (
+                    <p className="text-sm text-muted-foreground line-clamp-1">{banner.description}</p>
+                  )}
                   {banner.link_url && (
                     <a
                       href={banner.link_url}
