@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import BannerCarousel from "@/components/dashboard/BannerCarousel";
-import { LogOut, Plus, Baby, Calendar, MapPin, User, Edit, Search, Users } from "lucide-react";
+import { LogOut, Plus, Baby, Calendar, MapPin, User, Edit, Search, Users, Landmark } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 interface Child {
@@ -182,6 +182,12 @@ export default function DashboardPage() {
             ) : (
               // Jika sudah ada data anak sebelumnya (Tawarkan opsi hemat waktu sebagai utama)
               <>
+                <Link to="/pembayaran">
+                   <Button variant="outline" className="border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100 shadow-sm">
+                      <Landmark className="h-4 w-4 mr-2" /> Konfirmasi Pembayaran
+                   </Button>
+                </Link>
+
                 <Button onClick={handleRegisterSibling} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm">
                   <Users className="h-4 w-4 mr-1" /> Daftarkan Kakak/Adik
                 </Button>
@@ -195,7 +201,7 @@ export default function DashboardPage() {
                   variant="outline"
                   className="border-gray-300 text-gray-600 hover:bg-gray-50"
                 >
-                  <Plus className="h-4 w-4 mr-1" /> Daftar Baru (Mulai dari Nol)
+                  <Plus className="h-4 w-4 mr-1" /> Daftar Baru
                 </Button>
               </>
             )}

@@ -4,12 +4,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { logout } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogOut, FileText, Image, Megaphone, Users, ShieldCheck, Home, Settings, ClipboardList, Palette } from "lucide-react";
+import { LogOut, FileText, Image, Megaphone, Users, ShieldCheck, Home, Settings, ClipboardList, Palette, Landmark } from "lucide-react";
 import ContentManager from "@/components/admin/ContentManager";
 import GalleryManager from "@/components/admin/GalleryManager";
 import BannerManager from "@/components/admin/BannerManager";
 import ApplicantList from "@/components/admin/ApplicantList";
 import AdminLogList from "@/components/admin/AdminLogList";
+import AppSettings from "@/components/admin/AppSettings";
+import PaymentManager from "@/components/admin/PaymentManager";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -108,6 +110,10 @@ export default function AdminPage() {
               <Users className="h-4 w-4" />
               <span>Pendaftar</span>
             </TabsTrigger>
+            <TabsTrigger value="payments" className="gap-2 rounded-lg">
+              <Landmark className="h-4 w-4" />
+              <span>Pembayaran</span>
+            </TabsTrigger>
             <TabsTrigger value="content" className="gap-2 rounded-lg">
               <FileText className="h-4 w-4" />
               <span>Konten</span>
@@ -124,10 +130,17 @@ export default function AdminPage() {
               <ClipboardList className="h-4 w-4" />
               <span>Log</span>
             </TabsTrigger>
+            <TabsTrigger value="settings" className="gap-2 rounded-lg">
+              <Settings className="h-4 w-4" />
+              <span>Pengaturan</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="applicants">
             <ApplicantList />
+          </TabsContent>
+          <TabsContent value="payments">
+            <PaymentManager />
           </TabsContent>
           <TabsContent value="content">
             <ContentManager />
@@ -140,6 +153,9 @@ export default function AdminPage() {
           </TabsContent>
           <TabsContent value="logs">
             <AdminLogList />
+          </TabsContent>
+          <TabsContent value="settings">
+            <AppSettings />
           </TabsContent>
         </Tabs>
       </div>

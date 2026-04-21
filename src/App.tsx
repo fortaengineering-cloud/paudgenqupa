@@ -11,6 +11,7 @@ import PPDBForm from "./pages/PPDBForm";         // <-- Ini ditambahkan untuk Fo
 import AdminLoginPage from "./pages/AdminLoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import AdminPage from "./pages/AdminPage";
+import Payments from "./pages/Payments";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/admin/login" element={<AdminLoginPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/admin" element={<AdminPage />} />
+            <Route path="/pembayaran" element={<Payments />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

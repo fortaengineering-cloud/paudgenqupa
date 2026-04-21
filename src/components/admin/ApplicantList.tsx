@@ -9,7 +9,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Search, CheckCircle, XCircle, Clock, Users, Download } from "lucide-react";
+import { Search, CheckCircle, XCircle, Clock, Users, Download, MessageSquare } from "lucide-react";
 import { logActivity } from "@/lib/logger";
 
 interface Applicant {
@@ -36,6 +36,12 @@ const statusConfig = {
   rejected: { label: "Ditolak", variant: "destructive" as const, icon: XCircle },
 };
 
+const DEFAULT_SETTINGS = {
+  bank_info: "BSI - 7149021832 a.n Yayasan Generasi Qurani Pandeglang",
+  wa_template_tagihan: "Assalamu'alaikum Ayah/Bunda [NAMA_ORTU], ✨\n\nAlhamdulillah, pendaftaran online ananda [NAMA_ANAK] telah berhasil masuk ke sistem PPDB PAUD Tunas GenQuPa. 🏫\n\nInformasi pembayaran biaya pendaftaran pendaftaran:\n💳 [BANK_INFO]\n\nMohon konfirmasi dengan mengunggah bukti transfer di aplikasi. Terima kasih! 🧾✅",
+  wa_template_penerimaan: "Assalamu'alaikum Ayah/Bunda [NAMA_ORTU], ✨\n\nAlhamdulillah, ananda [NAMA_ANAK] dinyatakan LULUS dalam seleksi penerimaan siswa baru PAUD GenQuPa. 🏫🎊\n\nSilakan datang ke sekolah untuk proses daftar ulang. Selamat! 📱🤩",
+};
+
 export default function ApplicantList() {
   const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [search, setSearch] = useState("");
@@ -46,6 +52,57 @@ export default function ApplicantList() {
   useEffect(() => {
     fetchApplicants();
   }, []);
+
+  const sendWAMessage = (applicant: any, type: "tagihan" | "penerimaan") => {
+    const saved = localStorage.getItem("appSettings");
+    const settings = saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+    
+    let rawPhone = applicant.profiles?.phone || applicant.metadata?.telpAyah || applicant.metadata?.telpIbu || "";
+    if (!rawPhone) {
+      toast({ title: "Gagal", description: "Nomor WhatsApp tidak ditemukan.", variant: "destructive" });
+      return;
+    }
+
+    // Format phone: replace leading 0 with 62
+    let formattedPhone = rawPhone.replace(/[^0-9]/g, "");
+    if (formattedPhone.startsWith("0")) {
+      formattedPhone = "62" + formattedPhone.slice(1);
+    } else if (!formattedPhone.startsWith("62")) {
+      formattedPhone = "62" + formattedPhone;
+    }
+
+    const template = type === "tagihan" ? settings.wa_template_tagihan : settings.wa_template_penerimaan;
+    
+    const ayah = applicant.metadata?.namaAyah || "";
+    const ibu = applicant.metadata?.namaIbu || "";
+    let parentNameCombined = "";
+    
+    if (ayah && ibu) {
+      parentNameCombined = `Ayah/Bunda ${ayah} / ${ibu}`;
+    } else if (ayah || ibu) {
+      parentNameCombined = `Ayah/Bunda ${ayah || ibu}`;
+    } else {
+      parentNameCombined = `Ayah/Bunda ${applicant.profiles?.name || "Orang Tua"}`;
+    }
+    
+    const message = template
+      .replace(/\[NAMA_ORTU\]/g, parentNameCombined)
+      .replace(/\[NAMA_AYAH\]/g, ayah || "Ayah")
+      .replace(/\[NAMA_IBU\]/g, ibu || "Bunda")
+      .replace(/\[NAMA_ANAK\]/g, applicant.full_name)
+      .replace(/\[BANK_INFO\]/g, settings.bank_info);
+
+    // Gunakan api.whatsapp.com untuk kompatibilitas icon/emoji yang lebih baik di berbagai perangkat
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodedMessage}`;
+    
+    window.open(whatsappUrl, "_blank");
+    
+    logActivity(
+      `Kirim WhatsApp`,
+      `Mengirim pesan ${type} ke ${parentNameCombined} (${applicant.full_name})`
+    );
+  };
 
   const fetchApplicants = async () => {
     const { data, error } = await supabase
@@ -246,35 +303,64 @@ export default function ApplicantList() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {applicant.status === "pending" && (
-                        <div className="flex gap-1">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-primary border-primary/30 hover:bg-primary/10"
-                            onClick={() => updateStatus(applicant.id, "verified")}
-                          >
-                            <CheckCircle className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-destructive border-destructive/30 hover:bg-destructive/10"
-                            onClick={() => updateStatus(applicant.id, "rejected")}
-                          >
-                            <XCircle className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      )}
-                      {applicant.status !== "pending" && (
+                      <div className="flex items-center gap-1.5">
+                        {applicant.status === "pending" && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              title="Verifikasi"
+                              className="text-primary border-primary/30 hover:bg-primary/10 h-8 w-8 p-0"
+                              onClick={() => updateStatus(applicant.id, "verified")}
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              title="Tolak"
+                              className="text-destructive border-destructive/30 hover:bg-destructive/10 h-8 w-8 p-0"
+                              onClick={() => updateStatus(applicant.id, "rejected")}
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                        
+                        {/* WA Buttons */}
                         <Button
                           size="sm"
-                          variant="ghost"
-                          onClick={() => updateStatus(applicant.id, applicant.status === "verified" ? "rejected" : "verified")}
+                          variant="outline"
+                          title="Kirim Tagihan WA"
+                          className="text-amber-600 border-amber-200 hover:bg-amber-50 h-8 px-2 gap-1"
+                          onClick={() => sendWAMessage(applicant, "tagihan")}
                         >
-                          Ubah
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          <span className="text-[10px] uppercase font-bold hidden xl:inline">Tagihan</span>
                         </Button>
-                      )}
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          title="Kirim Kelulusan WA"
+                          className="text-emerald-600 border-emerald-200 hover:bg-emerald-50 h-8 px-2 gap-1"
+                          onClick={() => sendWAMessage(applicant, "penerimaan")}
+                        >
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          <span className="text-[10px] uppercase font-bold hidden xl:inline">Lulus</span>
+                        </Button>
+
+                        {applicant.status !== "pending" && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 text-xs"
+                            onClick={() => updateStatus(applicant.id, applicant.status === "verified" ? "rejected" : "verified")}
+                          >
+                            Ubah
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
