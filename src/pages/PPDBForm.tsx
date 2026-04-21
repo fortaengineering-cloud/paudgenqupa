@@ -60,7 +60,7 @@ export default function RegistrationForm() {
     akunIg: ''
   });
 
-  // State File & Preview Thumbnail (5 JENIS DOKUMEN SEKARANG)
+  // State File & Preview Thumbnail (5 Slot Dokumen)
   const [files, setFiles] = useState<{ [key: string]: File | null }>({
     foto: null,
     kk: null,
@@ -74,7 +74,7 @@ export default function RegistrationForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditMode = !!localStorage.getItem('ppdbEditId');
 
-  // LOAD DATA CACHE ATAU DATA LAMA
+  // LOAD DATA CACHE ATAU DATA EDIT
   useEffect(() => {
     const savedData = localStorage.getItem('ppdbFormData');
     const savedStep = localStorage.getItem('ppdbFormStep');
@@ -82,7 +82,7 @@ export default function RegistrationForm() {
       const parsed = JSON.parse(savedData);
       setFormData(parsed);
 
-      // Munculkan kembali thumbnail jika ada di metadata (untuk mode edit)
+      // Load thumbnail dari URL lama jika ada
       const oldPreviews: any = {};
       if (parsed.foto) oldPreviews.foto = parsed.foto;
       if (parsed.kk) oldPreviews.kk = parsed.kk;
@@ -157,7 +157,6 @@ export default function RegistrationForm() {
     window.scrollTo(0, 0);
   };
 
-  // --- FUNGSI SIMPAN FINAL KE DATABASE & STORAGE ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -173,6 +172,7 @@ export default function RegistrationForm() {
       for (const [key, file] of Object.entries(files)) {
         if (file) {
           const fileExt = file.name.split('.').pop();
+          // Gunakan folder per User ID agar rapi
           const fileName = `${profile.id}/${key}_${Date.now()}.${fileExt}`;
 
           const { error: uploadError } = await supabase.storage
@@ -181,7 +181,6 @@ export default function RegistrationForm() {
 
           if (uploadError) throw new Error(`Gagal upload ${key}: ${uploadError.message}`);
 
-          // Ambil link public URL-nya
           const { data: { publicUrl } } = supabase.storage
             .from('dokumen-ppdb')
             .getPublicUrl(fileName);
@@ -190,7 +189,7 @@ export default function RegistrationForm() {
         }
       }
 
-      // 2. GABUNGKAN DATA FORM DENGAN LINK FILE BARU (PENTING!)
+      // 2. GABUNGKAN DATA TEKS + LINK FILE BARU
       const finalMetadata = { ...formData, ...uploadedUrls };
 
       const payload = {
@@ -209,7 +208,7 @@ export default function RegistrationForm() {
       if (editId) {
         const { error: updateError } = await supabase.from('children').update(payload).eq('id', editId);
         if (updateError) throw updateError;
-        alert('Data & Lampiran Berhasil Diperbarui!');
+        alert('Data Berhasil Diperbarui!');
       } else {
         const { error: insertError } = await supabase.from('children').insert([payload]);
         if (insertError) throw insertError;
@@ -223,7 +222,7 @@ export default function RegistrationForm() {
       navigate('/dashboard');
 
     } catch (err: any) {
-      setError('Gagal menyimpan data: ' + err.message);
+      setError(err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -319,7 +318,7 @@ export default function RegistrationForm() {
                   <input type="number" name="anakKe" value={formData.anakKe} onChange={handleInputChange} className={inputClass} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Jml Saudara</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Jumlah Saudara Kandung</label>
                   <input type="number" name="jumlahSaudara" value={formData.jumlahSaudara} onChange={handleInputChange} className={inputClass} />
                 </div>
               </div>
@@ -328,15 +327,15 @@ export default function RegistrationForm() {
                 <select name="tinggalBersama" value={formData.tinggalBersama} onChange={handleInputChange} className={inputClass}>
                   <option value="">Pilih</option>
                   <option value="Orang Tua">Orang Tua</option>
-                  <option value="Wali">Wali</option>
+                  <option value="Wali">Wali / Kakek Nenek</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 text-xs">Jarak ke Rufizh GenQuPa</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1 text-xs">Jarak Tempat tinggal ke Rufizh GenQuPa</label>
                 <input type="text" name="jarakSekolah" value={formData.jarakSekolah} onChange={handleInputChange} className={inputClass} placeholder="Contoh: 1 km" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Asal Sekolah</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Asal Sekolah Sebelumnya</label>
                 <input type="text" name="asalSekolah" value={formData.asalSekolah} onChange={handleInputChange} className={inputClass} />
               </div>
               <div>
@@ -348,7 +347,7 @@ export default function RegistrationForm() {
                 <textarea name="riwayatTilawah" value={formData.riwayatTilawah} onChange={handleInputChange} className="w-full rounded-md border border-gray-300 p-3 text-sm min-h-[80px]" placeholder="Misal: Sudah jilid 2..."></textarea>
               </div>
               <div className="col-span-1 md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Jumlah Hafalan Saat Ini</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Jumlah Hafalan yang dimiliki saat ini</label>
                 <input type="text" name="jumlahHafalan" value={formData.jumlahHafalan} onChange={handleInputChange} className={inputClass} />
               </div>
             </div>
@@ -382,7 +381,15 @@ export default function RegistrationForm() {
                 <textarea name="alamatAyah" value={formData.alamatAyah} onChange={handleInputChange} className="w-full rounded-md border border-gray-300 p-3 text-sm" rows={2}></textarea>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nama Kabupaten</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nama Desa / Kelurahan</label>
+                <input type="text" name="desaAyah" value={formData.desaAyah} onChange={handleInputChange} className={inputClass} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Kecamatan</label>
+                <input type="text" name="kecamatanAyah" value={formData.kecamatanAyah} onChange={handleInputChange} className={inputClass} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Kabupaten</label>
                 <input type="text" name="kabupatenAyah" value={formData.kabupatenAyah} onChange={handleInputChange} className={inputClass} />
               </div>
               <div>
@@ -390,7 +397,7 @@ export default function RegistrationForm() {
                 <input type="text" name="provinsiAyah" value={formData.provinsiAyah} onChange={handleInputChange} className={inputClass} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Pekerjaan Utama</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Pekerjaan</label>
                 <input type="text" name="pekerjaanAyah" value={formData.pekerjaanAyah} onChange={handleInputChange} className={inputClass} />
               </div>
               <div>
@@ -443,17 +450,29 @@ export default function RegistrationForm() {
                 <input type="text" name="kecamatanIbu" value={formData.kecamatanIbu} onChange={handleInputChange} className={inputClass} />
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Kabupaten</label>
+                <input type="text" name="kabupatenIbu" value={formData.kabupatenIbu} onChange={handleInputChange} className={inputClass} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Provinsi</label>
+                <input type="text" name="provinsiIbu" value={formData.provinsiIbu} onChange={handleInputChange} className={inputClass} />
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Pekerjaan Ibu</label>
                 <input type="text" name="pekerjaanIbu" value={formData.pekerjaanIbu} onChange={handleInputChange} className={inputClass} />
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Alamat Tempat Kerja</label>
+                <input type="text" name="alamatKerjaIbu" value={formData.alamatKerjaIbu} onChange={handleInputChange} className={inputClass} />
+              </div>
+              <div className="col-span-1 md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Akun Instagram Orang Tua</label>
-                <input type="text" name="akunIg" value={formData.akunIg} onChange={handleInputChange} className={inputClass} placeholder="@nama_akun" />
+                <input type="text" name="akunIg" value={formData.akunIg} onChange={handleInputChange} className={inputClass} placeholder="@akun" />
               </div>
             </div>
           </div>
 
-          {/* ================= STEP 4: UPLOAD DOKUMEN (FIXED LOGIC) ================= */}
+          {/* ================= STEP 4: UPLOAD DOKUMEN ================= */}
           <div className={step === 4 ? 'space-y-8 animate-in' : 'hidden'}>
             <div className="bg-emerald-50 p-5 rounded-xl border border-emerald-100 flex items-start">
               <UploadCloud className="w-6 h-6 text-emerald-600 mr-3 shrink-0" />
