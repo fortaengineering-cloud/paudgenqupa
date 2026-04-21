@@ -87,7 +87,7 @@ export default function DashboardPage() {
           </Link>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600 hidden sm:block">
-              Halo, {profile?.name || 'Orang Tua'}
+              Ahlan wa sahlan, <span className="font-semibold">{profile?.name || 'Bapak/Ibu'}</span>
             </span>
             <Button variant="outline" size="sm" onClick={handleLogout} className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200">
               <LogOut className="h-4 w-4" />
