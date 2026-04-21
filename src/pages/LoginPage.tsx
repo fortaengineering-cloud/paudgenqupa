@@ -18,18 +18,30 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validasi: nomor HP hanya boleh angka
+    const phoneClean = phone.replace(/\D/g, "");
+    if (!/^\d{8,15}$/.test(phoneClean)) {
+      toast({
+        title: "Nomor HP tidak valid",
+        description: "Masukkan hanya angka (8-15 digit), contoh: 08123456789",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // LOGIKA EMAIL DUMMY GENQUPA DIMASUKKAN DI SINI
-      const dummyEmail = `${phone}@paud.genqupa.co.id`;
+      // LOGIKA EMAIL DUMMY GENQUPA
+      const dummyEmail = `${phoneClean}@paud.genqupa.co.id`;
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email: dummyEmail,
         password: password,
       });
 
-      if (error) throw error; // Jika error, langsung lempar ke blok catch di bawah
+      if (error) throw error;
 
       toast({ title: "Berhasil!", description: "Selamat datang kembali!" });
       navigate("/dashboard");
@@ -47,10 +59,15 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-accent/30 islamic-pattern p-4">
       <div className="w-full max-w-md">
-        <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary mb-6">
-          <ArrowLeft className="h-4 w-4" />
-          Kembali ke Beranda
-        </Link>
+        <div className="flex items-center justify-between mb-6">
+          <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary">
+            <ArrowLeft className="h-4 w-4" />
+            Kembali ke Beranda
+          </Link>
+          <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary">
+            Beranda
+          </Link>
+        </div>
 
         <Card className="border-0 shadow-xl">
           <CardHeader className="text-center">

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import BackHomeNav from '@/components/BackHomeNav';
 
 export default function RegisterPage() {
-    const [name, setName] = useState(''); // <-- State baru untuk menyimpan Nama Lengkap
+    const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -11,19 +12,32 @@ export default function RegisterPage() {
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validasi: nomor HP hanya boleh angka (8-15 digit)
+        const phoneClean = phone.replace(/\D/g, '');
+        if (!/^\d{8,15}$/.test(phoneClean)) {
+            alert("Nomor HP tidak valid. Masukkan hanya angka (8-15 digit), contoh: 08123456789");
+            return;
+        }
+        if (password.length < 6) {
+            alert("Password minimal 6 karakter.");
+            return;
+        }
+
         setLoading(true);
 
         // LOGIKA EMAIL DUMMY GENQUPA (Login tetap menggunakan No HP)
-        const dummyEmail = `${phone}@paud.genqupa.co.id`;
+        const dummyEmail = `${phoneClean}@paud.genqupa.co.id`;
 
         const { data, error } = await supabase.auth.signUp({
             email: dummyEmail,
             password: password,
             options: {
                 data: {
-                    phone: phone,
-                    name: name // <-- Mengirim nama ke database agar tersimpan di profil
-                }
+                    phone: phoneClean,
+                    name: name
+                },
+                emailRedirectTo: window.location.origin,
             }
         });
 
@@ -38,7 +52,10 @@ export default function RegisterPage() {
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+        <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">
+            <div className="w-full max-w-sm mb-4">
+                <BackHomeNav />
+            </div>
             <form onSubmit={handleRegister} className="w-full max-w-sm bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                 <h2 className="text-2xl font-bold text-center text-emerald-700 mb-6">Daftar Akun Ortu</h2>
 
