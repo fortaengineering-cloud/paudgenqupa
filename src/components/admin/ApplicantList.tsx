@@ -9,7 +9,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Search, CheckCircle, XCircle, Clock, Users, Download, MessageSquare, Trash2 } from "lucide-react";
+import { Search, CheckCircle, XCircle, Clock, Users, Download, MessageSquare, Trash2, Edit } from "lucide-react";
 import { logActivity } from "@/lib/logger";
 
 interface Applicant {
@@ -48,6 +48,12 @@ export default function ApplicantList() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+
+  // STATE UNTUK MODAL EDIT
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string>("");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editData, setEditData] = useState<any>({});
 
   useEffect(() => {
     fetchApplicants();
@@ -131,7 +137,6 @@ export default function ApplicantList() {
     }
   };
 
-  // FITUR SAPU BERSIH (HAPUS DATA & FILE FISIK)
   const handleDelete = async (applicant: Applicant) => {
     if (!window.confirm(`Yakin ingin MENGHAPUS PERMANEN data Ananda ${applicant.full_name} beserta seluruh dokumen yang diupload? Tindakan ini tidak dapat dibatalkan.`)) {
       return;
@@ -140,36 +145,28 @@ export default function ApplicantList() {
     toast({ title: "Menghapus data...", description: "Sedang membersihkan file dari server." });
 
     try {
-      // 1. Kumpulkan semua URL file yang pernah diupload dari JSON metadata
       const filesToDelete: string[] = [];
       if (applicant.metadata) {
         const fileKeys = ['foto', 'kk', 'akte', 'ktp_ayah', 'ktp_ibu'];
         fileKeys.forEach(key => {
           const fileUrl = applicant.metadata[key];
           if (fileUrl && typeof fileUrl === 'string' && fileUrl.includes('/dokumen-ppdb/')) {
-            // Potong URL untuk mengambil 'path' fisiknya saja (contoh: user_id/namafile.jpg)
             const path = fileUrl.split('/dokumen-ppdb/')[1];
             if (path) filesToDelete.push(path);
           }
         });
       }
 
-      // 2. Hapus file fisiknya dari Storage Supabase jika ada
       if (filesToDelete.length > 0) {
-        const { error: storageError } = await supabase.storage
-          .from('dokumen-ppdb')
-          .remove(filesToDelete);
+        const { error: storageError } = await supabase.storage.from('dokumen-ppdb').remove(filesToDelete);
         if (storageError) console.error("Error hapus file:", storageError);
       }
 
-      // 3. Hapus data pembayaran terkait (menghindari error foreign key)
-      await supabase.from('payments').delete().eq('child_id', applicant.id);
+      await supabase.from('payments' as any).delete().eq('child_id', applicant.id);
 
-      // 4. Hapus data pendaftarnya dari tabel children
       const { error: dbError } = await supabase.from('children').delete().eq('id', applicant.id);
       if (dbError) throw dbError;
 
-      // 5. Berikan notifikasi sukses & Segarkan tabel
       toast({ title: "Sapu Bersih Berhasil!", description: `Data dan dokumen ${applicant.full_name} telah dihapus permanen.` });
       logActivity('Hapus Pendaftar', `Menghapus data pendaftar ${applicant.full_name} dan dokumennya`);
       fetchApplicants();
@@ -177,6 +174,60 @@ export default function ApplicantList() {
     } catch (error: any) {
       console.error("Delete error:", error);
       toast({ title: "Gagal Menghapus", description: error.message, variant: "destructive" });
+    }
+  };
+
+  // --- FUNGSI BUKA MODAL EDIT ---
+  const handleEditClick = (applicant: Applicant) => {
+    setEditingId(applicant.id);
+    setEditData({
+      full_name: applicant.full_name || "",
+      gender: applicant.gender || "",
+      birth_place: applicant.birth_place || "",
+      birth_date: applicant.birth_date || "",
+      address: applicant.address || "",
+      namaAyah: applicant.metadata?.namaAyah || "",
+      telpAyah: applicant.metadata?.telpAyah || "",
+      namaIbu: applicant.metadata?.namaIbu || "",
+      telpIbu: applicant.metadata?.telpIbu || "",
+      originalMetadata: applicant.metadata || {}
+    });
+    setIsEditModalOpen(true);
+  };
+
+  // --- FUNGSI SIMPAN PERUBAHAN ---
+  const handleSaveEdit = async () => {
+    setSavingEdit(true);
+    try {
+      const updatedMetadata = {
+        ...editData.originalMetadata,
+        namaAyah: editData.namaAyah,
+        telpAyah: editData.telpAyah,
+        namaIbu: editData.namaIbu,
+        telpIbu: editData.telpIbu,
+      };
+
+      const payload = {
+        full_name: editData.full_name,
+        gender: editData.gender,
+        birth_place: editData.birth_place,
+        birth_date: editData.birth_date || null,
+        address: editData.address,
+        metadata: updatedMetadata
+      };
+
+      const { error } = await supabase.from('children').update(payload).eq('id', editingId);
+
+      if (error) throw error;
+
+      toast({ title: "Berhasil Diperbarui!", description: "Data pendaftar telah berhasil diubah." });
+      logActivity('Edit Pendaftar', `Mengedit data pendaftar ${editData.full_name}`);
+      setIsEditModalOpen(false);
+      fetchApplicants();
+    } catch (error: any) {
+      toast({ title: "Gagal Menyimpan", description: error.message, variant: "destructive" });
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -214,8 +265,8 @@ export default function ApplicantList() {
   const filtered = applicants.filter((a) => {
     const matchSearch = search
       ? a.full_name.toLowerCase().includes(search.toLowerCase()) ||
-        a.profiles?.name.toLowerCase().includes(search.toLowerCase()) ||
-        a.profiles?.phone.includes(search)
+        a.profiles?.name?.toLowerCase().includes(search.toLowerCase()) ||
+        a.profiles?.phone?.includes(search)
       : true;
     const matchStatus = statusFilter === "all" || a.status === statusFilter;
     return matchSearch && matchStatus;
@@ -227,6 +278,8 @@ export default function ApplicantList() {
     verified: applicants.filter((a) => a.status === "verified").length,
     rejected: applicants.filter((a) => a.status === "rejected").length,
   };
+
+  const inputClass = "w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white";
 
   return (
     <div className="space-y-6">
@@ -336,13 +389,13 @@ export default function ApplicantList() {
                       </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                      {applicant.birth_place}, {new Date(applicant.birth_date).toLocaleDateString("id-ID")}
+                      {applicant.birth_place}, {applicant.birth_date ? new Date(applicant.birth_date).toLocaleDateString("id-ID") : "-"}
                     </TableCell>
                     <TableCell className="hidden sm:table-cell text-sm">
-                      {applicant.profiles?.name || "-"}
+                      {applicant.metadata?.namaAyah || applicant.profiles?.name || "-"}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
-                      {applicant.profiles?.phone || "-"}
+                      {applicant.metadata?.telpAyah || applicant.profiles?.phone || "-"}
                     </TableCell>
                     <TableCell>
                       <Badge variant={statusConfig[applicant.status].variant}>
@@ -351,6 +404,17 @@ export default function ApplicantList() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5 flex-wrap">
+                        {/* Edit Button */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          title="Edit Data"
+                          className="text-blue-600 border-blue-200 hover:bg-blue-50 h-8 w-8 p-0"
+                          onClick={() => handleEditClick(applicant)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+
                         {applicant.status === "pending" && (
                           <>
                             <Button
@@ -407,17 +471,6 @@ export default function ApplicantList() {
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
-
-                        {applicant.status !== "pending" && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 text-xs"
-                            onClick={() => updateStatus(applicant.id, applicant.status === "verified" ? "rejected" : "verified")}
-                          >
-                            Ubah
-                          </Button>
-                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -434,6 +487,87 @@ export default function ApplicantList() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ================= MODAL EDIT DATA ================= */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-gray-50 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-6 border-b bg-white flex items-center justify-between">
+              <h3 className="text-xl font-bold text-emerald-800 flex items-center gap-2">
+                <Edit className="w-5 h-5" /> Edit Data Pendaftar
+              </h3>
+              <button onClick={() => setIsEditModalOpen(false)} className="text-gray-400 hover:text-red-500">
+                <XCircle className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto space-y-6">
+              {/* Seksi Data Anak */}
+              <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
+                <h4 className="font-bold text-gray-700 mb-4 border-b pb-2">Identitas Anak</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Nama Lengkap</label>
+                    <input type="text" className={inputClass} value={editData.full_name} onChange={e => setEditData({...editData, full_name: e.target.value})} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Jenis Kelamin</label>
+                    <select className={inputClass} value={editData.gender} onChange={e => setEditData({...editData, gender: e.target.value})}>
+                      <option value="">Pilih...</option>
+                      <option value="male">Laki-laki</option>
+                      <option value="female">Perempuan</option>
+                      <option value="Laki-laki">Laki-laki (Legacy)</option>
+                      <option value="Perempuan">Perempuan (Legacy)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Tempat Lahir</label>
+                    <input type="text" className={inputClass} value={editData.birth_place} onChange={e => setEditData({...editData, birth_place: e.target.value})} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Tanggal Lahir</label>
+                    <input type="date" className={inputClass} value={editData.birth_date} onChange={e => setEditData({...editData, birth_date: e.target.value})} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Seksi Data Orang Tua */}
+              <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
+                <h4 className="font-bold text-gray-700 mb-4 border-b pb-2">Identitas Orang Tua & Alamat</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Nama Ayah</label>
+                    <input type="text" className={inputClass} value={editData.namaAyah} onChange={e => setEditData({...editData, namaAyah: e.target.value})} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">No. HP Ayah</label>
+                    <input type="text" className={inputClass} value={editData.telpAyah} onChange={e => setEditData({...editData, telpAyah: e.target.value})} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Nama Ibu</label>
+                    <input type="text" className={inputClass} value={editData.namaIbu} onChange={e => setEditData({...editData, namaIbu: e.target.value})} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">No. HP Ibu</label>
+                    <input type="text" className={inputClass} value={editData.telpIbu} onChange={e => setEditData({...editData, telpIbu: e.target.value})} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Alamat Lengkap</label>
+                    <textarea rows={2} className={inputClass} value={editData.address} onChange={e => setEditData({...editData, address: e.target.value})} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t bg-white flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>Batal</Button>
+              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold" onClick={handleSaveEdit} disabled={savingEdit}>
+                {savingEdit ? "Menyimpan..." : "Simpan Perubahan"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
