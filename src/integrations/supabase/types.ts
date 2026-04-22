@@ -17,6 +17,7 @@ export type Database = {
       banners: {
         Row: {
           created_at: string
+          description: string | null
           id: string
           image_url: string
           is_active: boolean
@@ -26,6 +27,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          description?: string | null
           id?: string
           image_url: string
           is_active?: boolean
@@ -35,6 +37,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          description?: string | null
           id?: string
           image_url?: string
           is_active?: boolean
@@ -143,6 +146,50 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "gallery_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          category: string
+          child_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          parent_id: string | null
+          proof_url: string
+          status: string | null
+        }
+        Insert: {
+          amount: number
+          category: string
+          child_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          parent_id?: string | null
+          proof_url: string
+          status?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: string
+          child_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          parent_id?: string | null
+          proof_url?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
             referencedColumns: ["id"]
           },
         ]
