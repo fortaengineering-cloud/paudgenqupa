@@ -203,7 +203,8 @@ export default function Payments() {
 
       // (Opsional) Mencoba mengambil nomor WA dari database pengaturan jika fitur admin sudah siap
       try {
-        const { data: settings } = await supabase.from('app_settings' as any).select('wa_admin').single();
+        const { data } = await supabase.from('app_settings' as any).select('wa_admin').single();
+        const settings = data as any;
         if (settings && settings.wa_admin) {
           // Bersihkan karakter selain angka
           let cleanDbPhone = settings.wa_admin.replace(/\D/g, "");
