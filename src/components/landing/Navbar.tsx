@@ -6,8 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { logout } from "@/lib/auth";
 import { useNavigate } from "react-router-dom";
 import InstallPWAButton from "@/components/InstallPWAButton";
-
-const LOGO_URL = "/logo.png";
+import LogoMark from "@/components/LogoMark";
 
 const navItems = [
   { label: "Beranda", href: "#beranda" },
@@ -38,11 +37,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3">
-            <img
-              src={LOGO_URL}
-              alt="Logo PAUD Tunas GenQuPa"
-              className="h-11 w-11 object-contain"
-            />
+            <LogoMark className="h-11 w-11" imageClassName="h-11 w-11" src="/logo.png" />
             <div className="leading-tight">
               <span className="font-bold text-base text-foreground">PAUD Tunas</span>
               <span className="font-bold text-base text-emerald-600"> GenQuPa</span>
