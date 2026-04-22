@@ -84,7 +84,7 @@ export default function PaymentManager() {
             let formattedPhone = profileData.phone.replace(/[^0-9]/g, "");
             if (formattedPhone.startsWith("0")) formattedPhone = "62" + formattedPhone.slice(1);
             
-            const waMsg = `Assalamu'alaikum Ayah/Bunda, terima kasih atas konfirmasi pembayarannya untuk Ananda ${childName}. Pembayaran ${payment.category} sebesar Rp ${payment.amount.toLocaleString()} telah kami terima dan BERHASIL DIVALIDASI. Jazakumullah khairan katsiran.`;
+            const waMsg = `Wa'alaikumussalaam Ayah/Bunda, terima kasih atas konfirmasi pembayarannya untuk Ananda ${childName}. Pembayaran ${payment.category} sebesar Rp ${payment.amount.toLocaleString()} telah kami terima dan BERHASIL DIVALIDASI. Jazakumullah khairan katsiran.`;
             
             window.open(`https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodeURIComponent(waMsg)}`, "_blank");
           }
