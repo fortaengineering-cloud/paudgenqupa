@@ -66,15 +66,21 @@ export default function RegisterPage() {
         setLoading(false);
 
         if (error) {
+            // Ubah pesan error bawaan Supabase agar mudah dipahami Orang Tua
+            let errorMessage = error.message;
+            if (errorMessage.includes("User already registered")) {
+                errorMessage = "Nomor HP ini sudah terdaftar. Silakan langsung Login.";
+            }
+
             toast({
                 title: "Gagal mendaftar",
-                description: error.message,
+                description: errorMessage,
                 variant: "destructive"
             });
         } else {
             toast({
                 title: "Berhasil!",
-                description: "Akun berhasil dibuat! Silakan Login."
+                description: "Akun berhasil dibuat! Silakan Login menggunakan Nomor HP dan Password Anda."
             });
             navigate('/login');
         }
@@ -89,7 +95,6 @@ export default function RegisterPage() {
                 <h2 className="text-2xl font-bold text-center text-emerald-700 mb-6">Daftar Akun Ortu</h2>
 
                 <div className="space-y-4">
-                    {/* --- KOTAK ISIAN NAMA LENGKAP (BARU) --- */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap Ayah/Ibu</label>
                         <input
@@ -105,7 +110,7 @@ export default function RegisterPage() {
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Nomor HP / WA</label>
                         <input
-                            type="text"
+                            type="tel"
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
                             className="w-full px-3 py-2 border rounded-md focus:ring-emerald-500 focus:border-emerald-500"
@@ -124,9 +129,17 @@ export default function RegisterPage() {
                             required
                         />
                     </div>
-                    <button type="submit" disabled={loading} className="w-full bg-emerald-600 text-white py-2 rounded-md hover:bg-emerald-700 font-medium mt-4">
+                    
+                    <button type="submit" disabled={loading} className="w-full bg-emerald-600 text-white py-2.5 rounded-md hover:bg-emerald-700 font-medium mt-4 transition-colors">
                         {loading ? "Memproses..." : "Buat Akun"}
                     </button>
+                </div>
+
+                <div className="mt-6 text-center text-sm text-gray-600">
+                    Sudah punya akun?{" "}
+                    <Link to="/login" className="text-emerald-600 font-bold hover:underline">
+                        Login di sini
+                    </Link>
                 </div>
             </form>
         </div>

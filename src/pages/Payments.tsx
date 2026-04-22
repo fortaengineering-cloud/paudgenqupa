@@ -43,11 +43,11 @@ export default function Payments() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && profile?.id) {
-       fetchChildren(profile.id);
-       fetchPayments(profile.id);
+    if (!authLoading && user?.id) {
+       if (profile?.id) fetchChildren(profile.id);
+       fetchPayments(user.id);
     }
-  }, [profile, authLoading]);
+  }, [user, profile, authLoading]);
 
   const fetchChildren = async (validUserId: string) => {
     try {
@@ -123,7 +123,7 @@ export default function Payments() {
       setUploading(true);
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `${user?.id}/${fileName}`;
+      const filePath = `${user?.id || 'guest'}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('dokumen-ppdb')
@@ -154,12 +154,20 @@ export default function Payments() {
 
     setLoading(true);
     try {
-      const targetParentId = profile?.id || user?.id;
+      // 1. Ambil ID langsung dari server saat tombol diklik (Solusi Error 23503)
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
       
+      if (authError || !authUser) {
+        throw new Error("Sesi Anda telah berakhir. Silakan muat ulang (refresh) halaman ini atau login kembali.");
+      }
+
+      const exactUserId = authUser.id;
+
+      // 2. Proses Insert ke Database
       const { error } = await supabase
         .from("payments" as any)
         .insert({
-          parent_id: targetParentId,
+          parent_id: exactUserId,
           child_id: formData.child_id,
           amount: formData.amount,
           category: formData.category,
@@ -168,12 +176,45 @@ export default function Payments() {
           status: 'pending'
         });
 
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes('foreign key constraint')) {
+           const { error: fallbackError } = await supabase.from("payments" as any).insert({
+             parent_id: profile?.id,
+             child_id: formData.child_id,
+             amount: formData.amount,
+             category: formData.category,
+             description: formData.description,
+             proof_url: formData.proof_url,
+             status: 'pending'
+           });
+           if (fallbackError) throw fallbackError;
+        } else {
+           throw error;
+        }
+      }
 
+      // 3. Persiapkan Notifikasi WA ke Admin
       const childName = children.find(c => c.id === formData.child_id)?.full_name || "Ananda";
       const waAdminMsg = `Assalamu'alaikum Admin, saya baru saja mengunggah bukti transfer untuk Ananda ${childName}. Mohon divalidasi ya. Terima kasih.`;
       const encodedWa = encodeURIComponent(waAdminMsg);
-      const waUrl = `https://api.whatsapp.com/send?text=${encodedWa}`;
+      
+      // Default nomor WA Ustadz Ikhsan
+      let adminPhone = "6281214177714"; 
+
+      // (Opsional) Mencoba mengambil nomor WA dari database pengaturan jika fitur admin sudah siap
+      try {
+        const { data: settings } = await supabase.from('app_settings' as any).select('wa_admin').single();
+        if (settings && settings.wa_admin) {
+          // Bersihkan karakter selain angka
+          let cleanDbPhone = settings.wa_admin.replace(/\D/g, "");
+          if (cleanDbPhone.startsWith("0")) cleanDbPhone = "62" + cleanDbPhone.slice(1);
+          adminPhone = cleanDbPhone;
+        }
+      } catch (e) {
+        // Abaikan jika tabel app_settings belum dibuat, tetap pakai nomor default
+      }
+
+      const waUrl = `https://api.whatsapp.com/send?phone=${adminPhone}&text=${encodedWa}`;
 
       toast({ 
         title: "Berhasil!", 
@@ -185,11 +226,11 @@ export default function Payments() {
         )
       });
       
+      // 4. Reset Form & Refresh Riwayat
       setFormData({ child_id: "", category: "", amount: 0, description: "", proof_url: "" });
       setDisplayAmount("");
       setPreviewUrl(null);
-      
-      if (targetParentId) fetchPayments(targetParentId);
+      fetchPayments(exactUserId);
 
     } catch (error: any) {
       console.error("Payment Submission Error:", error);
