@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client"; // Import Supabase ditambahkan di sini
+import LogoMark from "@/components/LogoMark";
 
 export default function LoginPage() {
   const [phone, setPhone] = useState("");
@@ -82,13 +83,7 @@ export default function LoginPage() {
 
         <Card className="border-0 shadow-xl">
           <CardHeader className="text-center">
-            <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center mx-auto mb-2 shadow-sm ring-1 ring-border overflow-hidden">
-              <img
-                src="/logo-192x192.png"
-                alt="Logo PAUD Tunas GenQuPa"
-                className="h-full w-full object-contain"
-              />
-            </div>
+            <LogoMark className="mx-auto mb-2" />
             <CardTitle className="text-2xl">Masuk</CardTitle>
             <CardDescription>Login menggunakan nomor HP yang terdaftar</CardDescription>
           </CardHeader>
