@@ -9,7 +9,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Search, CheckCircle, XCircle, Clock, Users, Download, MessageSquare, Trash2, Edit } from "lucide-react";
+import { Search, CheckCircle, XCircle, Clock, Users, Download, MessageSquare, Trash2, Edit, ExternalLink, FileText } from "lucide-react";
 import { logActivity } from "@/lib/logger";
 
 interface Applicant {
@@ -49,7 +49,7 @@ export default function ApplicantList() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  // STATE UNTUK MODAL EDIT
+  // STATE UNTUK MODAL EDIT LENGKAP
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string>("");
   const [savingEdit, setSavingEdit] = useState(false);
@@ -58,6 +58,14 @@ export default function ApplicantList() {
   useEffect(() => {
     fetchApplicants();
   }, []);
+
+  const formatPhoneForWA = (phone: string) => {
+    if (!phone) return "";
+    let cleaned = phone.replace(/\D/g, "");
+    if (cleaned.startsWith("0")) return "62" + cleaned.slice(1);
+    if (!cleaned.startsWith("62")) return "62" + cleaned;
+    return cleaned;
+  };
 
   const sendWAMessage = (applicant: any, type: "tagihan" | "penerimaan") => {
     const saved = localStorage.getItem("appSettings");
@@ -69,13 +77,7 @@ export default function ApplicantList() {
       return;
     }
 
-    let formattedPhone = rawPhone.replace(/[^0-9]/g, "");
-    if (formattedPhone.startsWith("0")) {
-      formattedPhone = "62" + formattedPhone.slice(1);
-    } else if (!formattedPhone.startsWith("62")) {
-      formattedPhone = "62" + formattedPhone;
-    }
-
+    const formattedPhone = formatPhoneForWA(rawPhone);
     const template = type === "tagihan" ? settings.wa_template_tagihan : settings.wa_template_penerimaan;
     
     const ayah = applicant.metadata?.namaAyah || "";
@@ -102,15 +104,12 @@ export default function ApplicantList() {
     
     window.open(whatsappUrl, "_blank");
     
-    logActivity(
-      `Kirim WhatsApp`,
-      `Mengirim pesan ${type} ke ${parentNameCombined} (${applicant.full_name})`
-    );
+    logActivity(`Kirim WhatsApp`, `Mengirim pesan ${type} ke ${parentNameCombined}`);
   };
 
   const fetchApplicants = async () => {
     const { data, error } = await supabase
-      .from("children")
+      .from("children" as any)
       .select("*, profiles!children_parent_id_fkey(name, phone, address)")
       .order("created_at", { ascending: false });
 
@@ -120,7 +119,7 @@ export default function ApplicantList() {
 
   const updateStatus = async (id: string, status: "verified" | "rejected") => {
     const { error } = await supabase
-      .from("children")
+      .from("children" as any)
       .update({ status })
       .eq("id", id);
 
@@ -128,27 +127,20 @@ export default function ApplicantList() {
       toast({ title: "Gagal", description: error.message, variant: "destructive" });
     } else {
       const applicant = applicants.find(a => a.id === id);
-      logActivity(
-        `Verifikasi Pendaftar`,
-        `Mengubah status ${applicant?.full_name || 'Siswa'} menjadi ${statusConfig[status].label}`
-      );
+      logActivity(`Verifikasi Pendaftar`, `Mengubah status ${applicant?.full_name} menjadi ${statusConfig[status].label}`);
       fetchApplicants();
       toast({ title: "Berhasil!", description: `Status diubah menjadi ${statusConfig[status].label}.` });
     }
   };
 
   const handleDelete = async (applicant: Applicant) => {
-    if (!window.confirm(`Yakin ingin MENGHAPUS PERMANEN data Ananda ${applicant.full_name} beserta seluruh dokumen yang diupload? Tindakan ini tidak dapat dibatalkan.`)) {
-      return;
-    }
-
+    if (!window.confirm(`Yakin ingin MENGHAPUS PERMANEN data Ananda ${applicant.full_name} beserta seluruh dokumen yang diupload? Tindakan ini tidak dapat dibatalkan.`)) return;
     toast({ title: "Menghapus data...", description: "Sedang membersihkan file dari server." });
 
     try {
       const filesToDelete: string[] = [];
       if (applicant.metadata) {
-        const fileKeys = ['foto', 'kk', 'akte', 'ktp_ayah', 'ktp_ibu'];
-        fileKeys.forEach(key => {
+        ['foto', 'kk', 'akte', 'ktp_ayah', 'ktp_ibu'].forEach(key => {
           const fileUrl = applicant.metadata[key];
           if (fileUrl && typeof fileUrl === 'string' && fileUrl.includes('/dokumen-ppdb/')) {
             const path = fileUrl.split('/dokumen-ppdb/')[1];
@@ -158,39 +150,68 @@ export default function ApplicantList() {
       }
 
       if (filesToDelete.length > 0) {
-        const { error: storageError } = await supabase.storage.from('dokumen-ppdb').remove(filesToDelete);
-        if (storageError) console.error("Error hapus file:", storageError);
+        await supabase.storage.from('dokumen-ppdb').remove(filesToDelete);
       }
 
       await supabase.from('payments' as any).delete().eq('child_id', applicant.id);
-
-      const { error: dbError } = await supabase.from('children').delete().eq('id', applicant.id);
+      const { error: dbError } = await supabase.from('children' as any).delete().eq('id', applicant.id);
       if (dbError) throw dbError;
 
-      toast({ title: "Sapu Bersih Berhasil!", description: `Data dan dokumen ${applicant.full_name} telah dihapus permanen.` });
-      logActivity('Hapus Pendaftar', `Menghapus data pendaftar ${applicant.full_name} dan dokumennya`);
+      toast({ title: "Sapu Bersih Berhasil!", description: `Data ${applicant.full_name} dihapus.` });
       fetchApplicants();
-
     } catch (error: any) {
-      console.error("Delete error:", error);
       toast({ title: "Gagal Menghapus", description: error.message, variant: "destructive" });
     }
   };
 
-  // --- FUNGSI BUKA MODAL EDIT ---
+  // --- FUNGSI BUKA MODAL EDIT LENGKAP ---
   const handleEditClick = (applicant: Applicant) => {
     setEditingId(applicant.id);
+    const m = applicant.metadata || {};
     setEditData({
       full_name: applicant.full_name || "",
       gender: applicant.gender || "",
       birth_place: applicant.birth_place || "",
       birth_date: applicant.birth_date || "",
       address: applicant.address || "",
-      namaAyah: applicant.metadata?.namaAyah || "",
-      telpAyah: applicant.metadata?.telpAyah || "",
-      namaIbu: applicant.metadata?.namaIbu || "",
-      telpIbu: applicant.metadata?.telpIbu || "",
-      originalMetadata: applicant.metadata || {}
+      
+      // Data Tambahan Anak
+      namaPanggilan: m.namaPanggilan || "",
+      nikAnak: m.nikAnak || "",
+      kelasTujuan: m.kelasTujuan || "",
+      statusAnak: m.statusAnak || "",
+      anakKe: m.anakKe || "",
+      jumlahSaudara: m.jumlahSaudara || "",
+      tinggalBersama: m.tinggalBersama || "",
+      jarakSekolah: m.jarakSekolah || "",
+      asalSekolah: m.asalSekolah || "",
+      kelasAsal: m.kelasAsal || "",
+      riwayatTilawah: m.riwayatTilawah || "",
+      jumlahHafalan: m.jumlahHafalan || "",
+
+      // Data Ayah
+      namaAyah: m.namaAyah || "",
+      nikAyah: m.nikAyah || "",
+      telpAyah: m.telpAyah || "",
+      pekerjaanAyah: m.pekerjaanAyah || "",
+      alamatKerjaAyah: m.alamatKerjaAyah || "",
+      
+      // Data Ibu
+      namaIbu: m.namaIbu || "",
+      nikIbu: m.nikIbu || "",
+      telpIbu: m.telpIbu || "",
+      pekerjaanIbu: m.pekerjaanIbu || "",
+      alamatKerjaIbu: m.alamatKerjaIbu || "",
+      akunIg: m.akunIg || "",
+
+      // Dokumen View Only
+      foto: m.foto || "",
+      kk: m.kk || "",
+      akte: m.akte || "",
+      ktp_ayah: m.ktp_ayah || "",
+      ktp_ibu: m.ktp_ibu || "",
+      
+      originalMetadata: m
     });
     setIsEditModalOpen(true);
   };
@@ -201,10 +222,29 @@ export default function ApplicantList() {
     try {
       const updatedMetadata = {
         ...editData.originalMetadata,
+        namaPanggilan: editData.namaPanggilan,
+        nikAnak: editData.nikAnak,
+        kelasTujuan: editData.kelasTujuan,
+        statusAnak: editData.statusAnak,
+        anakKe: editData.anakKe,
+        jumlahSaudara: editData.jumlahSaudara,
+        tinggalBersama: editData.tinggalBersama,
+        jarakSekolah: editData.jarakSekolah,
+        asalSekolah: editData.asalSekolah,
+        kelasAsal: editData.kelasAsal,
+        riwayatTilawah: editData.riwayatTilawah,
+        jumlahHafalan: editData.jumlahHafalan,
         namaAyah: editData.namaAyah,
+        nikAyah: editData.nikAyah,
         telpAyah: editData.telpAyah,
+        pekerjaanAyah: editData.pekerjaanAyah,
+        alamatKerjaAyah: editData.alamatKerjaAyah,
         namaIbu: editData.namaIbu,
+        nikIbu: editData.nikIbu,
         telpIbu: editData.telpIbu,
+        pekerjaanIbu: editData.pekerjaanIbu,
+        alamatKerjaIbu: editData.alamatKerjaIbu,
+        akunIg: editData.akunIg,
       };
 
       const payload = {
@@ -216,12 +256,10 @@ export default function ApplicantList() {
         metadata: updatedMetadata
       };
 
-      const { error } = await supabase.from('children').update(payload).eq('id', editingId);
+      const { error } = await supabase.from('children' as any).update(payload).eq('id', editingId);
 
       if (error) throw error;
-
       toast({ title: "Berhasil Diperbarui!", description: "Data pendaftar telah berhasil diubah." });
-      logActivity('Edit Pendaftar', `Mengedit data pendaftar ${editData.full_name}`);
       setIsEditModalOpen(false);
       fetchApplicants();
     } catch (error: any) {
@@ -233,30 +271,22 @@ export default function ApplicantList() {
 
   const exportToCSV = () => {
     const headers = [
-      "Nama Anak", "Jenis Kelamin", "Tempat Lahir", "Tanggal Lahir", "Anak Ke", "Status Pendaftaran",
-      "Nama Ayah", "NIK Ayah", "No Telp Ayah", "Pekerjaan Ayah",
-      "Nama Ibu", "NIK Ibu", "No Telp Ibu", "Pekerjaan Ibu",
-      "Alamat", "Asal Sekolah", "Riwayat Tilawah"
+      "Nama Anak", "Jenis Kelamin", "Tempat Lahir", "Tanggal Lahir", "Anak Ke", "Status",
+      "Nama Ayah", "No Telp Ayah", "Nama Ibu", "No Telp Ibu", "Alamat"
     ];
-
     const rows = filtered.map(app => {
       const m = app.metadata || {};
       const data = [
         app.full_name, app.gender, app.birth_place, app.birth_date, app.child_order, app.status,
-        m.namaAyah || "", m.nikAyah || "", m.telpAyah || "", m.pekerjaanAyah || "",
-        m.namaIbu || "", m.nikIbu || "", m.telpIbu || "", m.pekerjaanIbu || "",
-        app.address || "", m.asalSekolah || "", m.riwayatTilawah || ""
+        m.namaAyah || "", m.telpAyah || "", m.namaIbu || "", m.telpIbu || "", app.address || ""
       ];
       return data.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",");
     });
-
     const csvContent = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Data_PPDB_GenQuPa_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
+    link.setAttribute("href", URL.createObjectURL(blob));
+    link.setAttribute("download", `Data_PPDB_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -294,67 +324,20 @@ export default function ApplicantList() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center">
-              <Users className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{counts.total}</p>
-              <p className="text-xs text-muted-foreground">Total</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center">
-              <Clock className="h-5 w-5 text-secondary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{counts.pending}</p>
-              <p className="text-xs text-muted-foreground">Menunggu</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <CheckCircle className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{counts.verified}</p>
-              <p className="text-xs text-muted-foreground">Terverifikasi</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
-              <XCircle className="h-5 w-5 text-destructive" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{counts.rejected}</p>
-              <p className="text-xs text-muted-foreground">Ditolak</p>
-            </div>
-          </CardContent>
-        </Card>
+        <Card><CardContent className="p-4 flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center"><Users className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-bold">{counts.total}</p><p className="text-xs text-muted-foreground">Total</p></div></CardContent></Card>
+        <Card><CardContent className="p-4 flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center"><Clock className="h-5 w-5 text-secondary" /></div><div><p className="text-2xl font-bold">{counts.pending}</p><p className="text-xs text-muted-foreground">Menunggu</p></div></CardContent></Card>
+        <Card><CardContent className="p-4 flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center"><CheckCircle className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-bold">{counts.verified}</p><p className="text-xs text-muted-foreground">Terverifikasi</p></div></CardContent></Card>
+        <Card><CardContent className="p-4 flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center"><XCircle className="h-5 w-5 text-destructive" /></div><div><p className="text-2xl font-bold">{counts.rejected}</p><p className="text-xs text-muted-foreground">Ditolak</p></div></CardContent></Card>
       </div>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Cari nama anak atau orang tua..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
+          <Input placeholder="Cari nama anak atau orang tua..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue />
-          </SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Semua Status</SelectItem>
             <SelectItem value="pending">Menunggu</SelectItem>
@@ -374,7 +357,7 @@ export default function ApplicantList() {
                   <TableHead>Nama Anak</TableHead>
                   <TableHead className="hidden md:table-cell">TTL</TableHead>
                   <TableHead className="hidden sm:table-cell">Orang Tua</TableHead>
-                  <TableHead className="hidden lg:table-cell">No. HP</TableHead>
+                  <TableHead className="hidden lg:table-cell">No. HP (WA)</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Aksi</TableHead>
                 </TableRow>
@@ -394,8 +377,17 @@ export default function ApplicantList() {
                     <TableCell className="hidden sm:table-cell text-sm">
                       {applicant.metadata?.namaAyah || applicant.profiles?.name || "-"}
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
-                      {applicant.metadata?.telpAyah || applicant.profiles?.phone || "-"}
+                    <TableCell className="hidden lg:table-cell text-sm font-medium">
+                      {(() => {
+                        const phone = applicant.metadata?.telpAyah || applicant.profiles?.phone;
+                        if (!phone) return <span className="text-muted-foreground">-</span>;
+                        const waLink = `https://wa.me/${formatPhoneForWA(phone)}`;
+                        return (
+                          <a href={waLink} target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:text-emerald-800 hover:underline flex items-center gap-1">
+                            {phone} <ExternalLink className="w-3 h-3" />
+                          </a>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
                       <Badge variant={statusConfig[applicant.status].variant}>
@@ -404,97 +396,51 @@ export default function ApplicantList() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        {/* Edit Button */}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          title="Edit Data"
-                          className="text-blue-600 border-blue-200 hover:bg-blue-50 h-8 w-8 p-0"
-                          onClick={() => handleEditClick(applicant)}
-                        >
+                        <Button size="sm" variant="outline" title="Detail & Edit Data" className="text-blue-600 border-blue-200 hover:bg-blue-50 h-8 w-8 p-0" onClick={() => handleEditClick(applicant)}>
                           <Edit className="h-4 w-4" />
                         </Button>
 
                         {applicant.status === "pending" && (
                           <>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              title="Verifikasi"
-                              className="text-primary border-primary/30 hover:bg-primary/10 h-8 w-8 p-0"
-                              onClick={() => updateStatus(applicant.id, "verified")}
-                            >
+                            <Button size="sm" variant="outline" title="Verifikasi" className="text-primary border-primary/30 hover:bg-primary/10 h-8 w-8 p-0" onClick={() => updateStatus(applicant.id, "verified")}>
                               <CheckCircle className="h-4 w-4" />
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              title="Tolak"
-                              className="text-destructive border-destructive/30 hover:bg-destructive/10 h-8 w-8 p-0"
-                              onClick={() => updateStatus(applicant.id, "rejected")}
-                            >
+                            <Button size="sm" variant="outline" title="Tolak" className="text-destructive border-destructive/30 hover:bg-destructive/10 h-8 w-8 p-0" onClick={() => updateStatus(applicant.id, "rejected")}>
                               <XCircle className="h-4 w-4" />
                             </Button>
                           </>
                         )}
                         
-                        {/* WA Buttons */}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          title="Kirim Tagihan WA"
-                          className="text-amber-600 border-amber-200 hover:bg-amber-50 h-8 px-2 gap-1"
-                          onClick={() => sendWAMessage(applicant, "tagihan")}
-                        >
+                        <Button size="sm" variant="outline" title="Kirim Tagihan WA" className="text-amber-600 border-amber-200 hover:bg-amber-50 h-8 px-2 gap-1" onClick={() => sendWAMessage(applicant, "tagihan")}>
                           <MessageSquare className="h-3.5 w-3.5" />
                           <span className="text-[10px] uppercase font-bold hidden xl:inline">Tagihan</span>
                         </Button>
 
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          title="Kirim Kelulusan WA"
-                          className="text-emerald-600 border-emerald-200 hover:bg-emerald-50 h-8 px-2 gap-1"
-                          onClick={() => sendWAMessage(applicant, "penerimaan")}
-                        >
+                        <Button size="sm" variant="outline" title="Kirim Kelulusan WA" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50 h-8 px-2 gap-1" onClick={() => sendWAMessage(applicant, "penerimaan")}>
                           <MessageSquare className="h-3.5 w-3.5" />
                           <span className="text-[10px] uppercase font-bold hidden xl:inline">Lulus</span>
                         </Button>
 
-                        {/* Delete Button */}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          title="Hapus Peserta"
-                          className="text-red-600 border-red-200 hover:bg-red-50 h-8 w-8 p-0"
-                          onClick={() => handleDelete(applicant)}
-                        >
+                        <Button size="sm" variant="outline" title="Hapus Peserta" className="text-red-600 border-red-200 hover:bg-red-50 h-8 w-8 p-0" onClick={() => handleDelete(applicant)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
                   </TableRow>
                 ))}
-                {filtered.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      {loading ? "Memuat data..." : "Belum ada pendaftar."}
-                    </TableCell>
-                  </TableRow>
-                )}
               </TableBody>
             </Table>
           </div>
         </CardContent>
       </Card>
 
-      {/* ================= MODAL EDIT DATA ================= */}
+      {/* ================= MODAL EDIT DATA & DOKUMEN ================= */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-gray-50 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="p-6 border-b bg-white flex items-center justify-between">
+          <div className="bg-gray-50 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-5 border-b bg-white flex items-center justify-between">
               <h3 className="text-xl font-bold text-emerald-800 flex items-center gap-2">
-                <Edit className="w-5 h-5" /> Edit Data Pendaftar
+                <Edit className="w-5 h-5" /> Detail & Edit Data Pendaftar
               </h3>
               <button onClick={() => setIsEditModalOpen(false)} className="text-gray-400 hover:text-red-500">
                 <XCircle className="w-6 h-6" />
@@ -502,66 +448,69 @@ export default function ApplicantList() {
             </div>
             
             <div className="p-6 overflow-y-auto space-y-6">
+              
+              {/* Seksi Dokumen Upload */}
+              <div className="bg-emerald-50 p-5 rounded-xl border border-emerald-100 shadow-sm">
+                <h4 className="font-bold text-emerald-800 mb-4 border-b border-emerald-200 pb-2 flex items-center gap-2">
+                  <FileText className="w-4 h-4" /> Dokumen Lampiran (Bukti)
+                </h4>
+                <div className="flex flex-wrap gap-3">
+                  {editData.foto ? <a href={editData.foto} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-white rounded-lg shadow text-emerald-700 text-sm font-bold border hover:bg-emerald-100 flex items-center gap-2">Pas Foto <ExternalLink className="w-3 h-3"/></a> : <span className="text-sm text-gray-400 border px-3 py-1 rounded">Foto ❌</span>}
+                  {editData.kk ? <a href={editData.kk} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-white rounded-lg shadow text-emerald-700 text-sm font-bold border hover:bg-emerald-100 flex items-center gap-2">Kartu Keluarga <ExternalLink className="w-3 h-3"/></a> : <span className="text-sm text-gray-400 border px-3 py-1 rounded">KK ❌</span>}
+                  {editData.akte ? <a href={editData.akte} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-white rounded-lg shadow text-emerald-700 text-sm font-bold border hover:bg-emerald-100 flex items-center gap-2">Akte Lahir <ExternalLink className="w-3 h-3"/></a> : <span className="text-sm text-gray-400 border px-3 py-1 rounded">Akte ❌</span>}
+                  {editData.ktp_ayah ? <a href={editData.ktp_ayah} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-white rounded-lg shadow text-emerald-700 text-sm font-bold border hover:bg-emerald-100 flex items-center gap-2">KTP Ayah <ExternalLink className="w-3 h-3"/></a> : <span className="text-sm text-gray-400 border px-3 py-1 rounded">KTP Ayah ❌</span>}
+                  {editData.ktp_ibu ? <a href={editData.ktp_ibu} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-white rounded-lg shadow text-emerald-700 text-sm font-bold border hover:bg-emerald-100 flex items-center gap-2">KTP Ibu <ExternalLink className="w-3 h-3"/></a> : <span className="text-sm text-gray-400 border px-3 py-1 rounded">KTP Ibu ❌</span>}
+                </div>
+              </div>
+
               {/* Seksi Data Anak */}
               <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
                 <h4 className="font-bold text-gray-700 mb-4 border-b pb-2">Identitas Anak</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Nama Lengkap</label>
-                    <input type="text" className={inputClass} value={editData.full_name} onChange={e => setEditData({...editData, full_name: e.target.value})} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Jenis Kelamin</label>
-                    <select className={inputClass} value={editData.gender} onChange={e => setEditData({...editData, gender: e.target.value})}>
-                      <option value="">Pilih...</option>
-                      <option value="male">Laki-laki</option>
-                      <option value="female">Perempuan</option>
-                      <option value="Laki-laki">Laki-laki (Legacy)</option>
-                      <option value="Perempuan">Perempuan (Legacy)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Tempat Lahir</label>
-                    <input type="text" className={inputClass} value={editData.birth_place} onChange={e => setEditData({...editData, birth_place: e.target.value})} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Tanggal Lahir</label>
-                    <input type="date" className={inputClass} value={editData.birth_date} onChange={e => setEditData({...editData, birth_date: e.target.value})} />
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div><label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Kelas Tujuan</label><input type="text" className={inputClass} value={editData.kelasTujuan} onChange={e => setEditData({...editData, kelasTujuan: e.target.value})} /></div>
+                  <div className="md:col-span-2"><label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Nama Lengkap</label><input type="text" className={inputClass} value={editData.full_name} onChange={e => setEditData({...editData, full_name: e.target.value})} /></div>
+                  <div><label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Nama Panggilan</label><input type="text" className={inputClass} value={editData.namaPanggilan} onChange={e => setEditData({...editData, namaPanggilan: e.target.value})} /></div>
+                  <div><label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">NIK Anak</label><input type="text" className={inputClass} value={editData.nikAnak} onChange={e => setEditData({...editData, nikAnak: e.target.value})} /></div>
+                  <div><label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Jenis Kelamin</label><select className={inputClass} value={editData.gender} onChange={e => setEditData({...editData, gender: e.target.value})}><option value="">Pilih...</option><option value="male">Laki-laki</option><option value="female">Perempuan</option></select></div>
+                  <div><label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Tempat Lahir</label><input type="text" className={inputClass} value={editData.birth_place} onChange={e => setEditData({...editData, birth_place: e.target.value})} /></div>
+                  <div><label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Tanggal Lahir</label><input type="date" className={inputClass} value={editData.birth_date} onChange={e => setEditData({...editData, birth_date: e.target.value})} /></div>
+                  <div><label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Status Anak</label><input type="text" className={inputClass} value={editData.statusAnak} onChange={e => setEditData({...editData, statusAnak: e.target.value})} /></div>
+                  <div><label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Anak Ke</label><input type="number" className={inputClass} value={editData.anakKe} onChange={e => setEditData({...editData, anakKe: e.target.value})} /></div>
+                  <div><label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Jml Saudara</label><input type="number" className={inputClass} value={editData.jumlahSaudara} onChange={e => setEditData({...editData, jumlahSaudara: e.target.value})} /></div>
+                  <div><label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Tinggal Bersama</label><input type="text" className={inputClass} value={editData.tinggalBersama} onChange={e => setEditData({...editData, tinggalBersama: e.target.value})} /></div>
+                  <div><label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Asal Sekolah</label><input type="text" className={inputClass} value={editData.asalSekolah} onChange={e => setEditData({...editData, asalSekolah: e.target.value})} /></div>
+                  <div className="md:col-span-2"><label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Riwayat Tilawah / Mengaji</label><input type="text" className={inputClass} value={editData.riwayatTilawah} onChange={e => setEditData({...editData, riwayatTilawah: e.target.value})} /></div>
                 </div>
               </div>
 
               {/* Seksi Data Orang Tua */}
               <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
-                <h4 className="font-bold text-gray-700 mb-4 border-b pb-2">Identitas Orang Tua & Alamat</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Nama Ayah</label>
-                    <input type="text" className={inputClass} value={editData.namaAyah} onChange={e => setEditData({...editData, namaAyah: e.target.value})} />
+                <h4 className="font-bold text-gray-700 mb-4 border-b pb-2">Identitas Ayah & Ibu</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                  <div className="space-y-3 bg-blue-50/30 p-3 rounded-lg border border-blue-50">
+                    <div><label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Nama Ayah</label><input type="text" className={inputClass} value={editData.namaAyah} onChange={e => setEditData({...editData, namaAyah: e.target.value})} /></div>
+                    <div><label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">NIK Ayah</label><input type="text" className={inputClass} value={editData.nikAyah} onChange={e => setEditData({...editData, nikAyah: e.target.value})} /></div>
+                    <div><label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">No. HP Ayah</label><input type="text" className={inputClass} value={editData.telpAyah} onChange={e => setEditData({...editData, telpAyah: e.target.value})} /></div>
+                    <div><label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Pekerjaan Ayah</label><input type="text" className={inputClass} value={editData.pekerjaanAyah} onChange={e => setEditData({...editData, pekerjaanAyah: e.target.value})} /></div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">No. HP Ayah</label>
-                    <input type="text" className={inputClass} value={editData.telpAyah} onChange={e => setEditData({...editData, telpAyah: e.target.value})} />
+                  <div className="space-y-3 bg-pink-50/30 p-3 rounded-lg border border-pink-50">
+                    <div><label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Nama Ibu</label><input type="text" className={inputClass} value={editData.namaIbu} onChange={e => setEditData({...editData, namaIbu: e.target.value})} /></div>
+                    <div><label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">NIK Ibu</label><input type="text" className={inputClass} value={editData.nikIbu} onChange={e => setEditData({...editData, nikIbu: e.target.value})} /></div>
+                    <div><label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">No. HP Ibu</label><input type="text" className={inputClass} value={editData.telpIbu} onChange={e => setEditData({...editData, telpIbu: e.target.value})} /></div>
+                    <div><label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Pekerjaan Ibu</label><input type="text" className={inputClass} value={editData.pekerjaanIbu} onChange={e => setEditData({...editData, pekerjaanIbu: e.target.value})} /></div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Nama Ibu</label>
-                    <input type="text" className={inputClass} value={editData.namaIbu} onChange={e => setEditData({...editData, namaIbu: e.target.value})} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">No. HP Ibu</label>
-                    <input type="text" className={inputClass} value={editData.telpIbu} onChange={e => setEditData({...editData, telpIbu: e.target.value})} />
-                  </div>
+                  
                   <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Alamat Lengkap</label>
+                    <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Alamat Lengkap (Keluarga)</label>
                     <textarea rows={2} className={inputClass} value={editData.address} onChange={e => setEditData({...editData, address: e.target.value})} />
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="p-4 border-t bg-white flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>Batal</Button>
-              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold" onClick={handleSaveEdit} disabled={savingEdit}>
+            <div className="p-4 border-t bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
+              <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>Tutup</Button>
+              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8" onClick={handleSaveEdit} disabled={savingEdit}>
                 {savingEdit ? "Menyimpan..." : "Simpan Perubahan"}
               </Button>
             </div>
