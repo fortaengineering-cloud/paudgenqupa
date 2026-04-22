@@ -164,12 +164,10 @@ export default function ApplicantList() {
     }
   };
 
-  // --- FUNGSI BUKA MODAL EDIT LENGKAP ---
   const handleEditClick = (applicant: Applicant) => {
     setEditingId(applicant.id);
     const m = applicant.metadata || {};
     
-    // AUTO-CONVERT JENIS KELAMIN AGAR SESUAI DATABASE (MENCEGAH ERROR CHECK CONSTRAINT)
     let safeGender = applicant.gender || "";
     if (safeGender.toLowerCase() === "laki-laki" || safeGender.toLowerCase() === "l") safeGender = "male";
     if (safeGender.toLowerCase() === "perempuan" || safeGender.toLowerCase() === "p") safeGender = "female";
@@ -181,7 +179,6 @@ export default function ApplicantList() {
       birth_date: applicant.birth_date || "",
       address: applicant.address || "",
       
-      // Data Tambahan Anak
       namaPanggilan: m.namaPanggilan || "",
       nikAnak: m.nikAnak || "",
       kelasTujuan: m.kelasTujuan || "",
@@ -195,14 +192,12 @@ export default function ApplicantList() {
       riwayatTilawah: m.riwayatTilawah || "",
       jumlahHafalan: m.jumlahHafalan || "",
 
-      // Data Ayah
       namaAyah: m.namaAyah || "",
       nikAyah: m.nikAyah || "",
       telpAyah: m.telpAyah || "",
       pekerjaanAyah: m.pekerjaanAyah || "",
       alamatKerjaAyah: m.alamatKerjaAyah || "",
       
-      // Data Ibu
       namaIbu: m.namaIbu || "",
       nikIbu: m.nikIbu || "",
       telpIbu: m.telpIbu || "",
@@ -210,7 +205,6 @@ export default function ApplicantList() {
       alamatKerjaIbu: m.alamatKerjaIbu || "",
       akunIg: m.akunIg || "",
 
-      // Dokumen View Only
       foto: m.foto || "",
       kk: m.kk || "",
       akte: m.akte || "",
@@ -222,15 +216,9 @@ export default function ApplicantList() {
     setIsEditModalOpen(true);
   };
 
-  // --- FUNGSI SIMPAN PERUBAHAN ---
   const handleSaveEdit = async () => {
-    // Validasi Anti-Lupa Jenis Kelamin
     if (!editData.gender || !['male', 'female'].includes(editData.gender)) {
-      toast({ 
-        title: "Perhatian", 
-        description: "Pilih Jenis Kelamin (Laki-laki / Perempuan) terlebih dahulu.", 
-        variant: "destructive" 
-      });
+      toast({ title: "Perhatian", description: "Pilih Jenis Kelamin terlebih dahulu.", variant: "destructive" });
       return;
     }
 
@@ -363,87 +351,94 @@ export default function ApplicantList() {
         </Select>
       </div>
 
-      {/* Table */}
+      {/* Table (SUDAH FIX SCROLL HORIZONTAL & KOLOM LENGKAP) */}
       <Card>
         <CardContent className="p-0">
-          <div className="overflow-auto">
-            <Table>
+          <div className="w-full overflow-x-auto">
+            <Table className="w-full min-w-[1000px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nama Anak</TableHead>
-                  <TableHead className="hidden md:table-cell">TTL</TableHead>
-                  <TableHead className="hidden sm:table-cell">Orang Tua</TableHead>
-                  <TableHead className="hidden lg:table-cell">No. HP (WA)</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Aksi</TableHead>
+                  <TableHead className="whitespace-nowrap">Nama Anak</TableHead>
+                  <TableHead className="whitespace-nowrap">TTL</TableHead>
+                  <TableHead className="whitespace-nowrap">Orang Tua</TableHead>
+                  <TableHead className="whitespace-nowrap">No. HP (WA)</TableHead>
+                  <TableHead className="whitespace-nowrap">Status</TableHead>
+                  <TableHead className="whitespace-nowrap min-w-[200px]">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map((applicant) => (
                   <TableRow key={applicant.id}>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       <div>
                         <p className="font-medium">{applicant.full_name}</p>
                         <p className="text-xs text-muted-foreground">{applicant.gender === 'male' ? 'Laki-laki' : applicant.gender === 'female' ? 'Perempuan' : applicant.gender}</p>
                       </div>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                       {applicant.birth_place}, {applicant.birth_date ? new Date(applicant.birth_date).toLocaleDateString("id-ID") : "-"}
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell text-sm">
+                    <TableCell className="whitespace-nowrap text-sm">
                       {applicant.metadata?.namaAyah || applicant.profiles?.name || "-"}
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell text-sm font-medium">
+                    <TableCell className="whitespace-nowrap text-sm font-medium">
                       {(() => {
                         const phone = applicant.metadata?.telpAyah || applicant.profiles?.phone;
                         if (!phone) return <span className="text-muted-foreground">-</span>;
                         const waLink = `https://wa.me/${formatPhoneForWA(phone)}`;
                         return (
-                          <a href={waLink} target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:text-emerald-800 hover:underline flex items-center gap-1">
+                          <a href={waLink} target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:text-emerald-800 hover:underline flex items-center gap-1 w-fit">
                             {phone} <ExternalLink className="w-3 h-3" />
                           </a>
                         );
                       })()}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       <Badge variant={statusConfig[applicant.status].variant}>
                         {statusConfig[applicant.status].label}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <Button size="sm" variant="outline" title="Detail & Edit Data" className="text-blue-600 border-blue-200 hover:bg-blue-50 h-8 w-8 p-0" onClick={() => handleEditClick(applicant)}>
+                    <TableCell className="whitespace-nowrap">
+                      <div className="flex items-center gap-1.5 flex-nowrap">
+                        <Button size="sm" variant="outline" title="Detail & Edit Data" className="text-blue-600 border-blue-200 hover:bg-blue-50 h-8 w-8 p-0 shrink-0" onClick={() => handleEditClick(applicant)}>
                           <Edit className="h-4 w-4" />
                         </Button>
 
                         {applicant.status === "pending" && (
                           <>
-                            <Button size="sm" variant="outline" title="Verifikasi" className="text-primary border-primary/30 hover:bg-primary/10 h-8 w-8 p-0" onClick={() => updateStatus(applicant.id, "verified")}>
+                            <Button size="sm" variant="outline" title="Verifikasi" className="text-primary border-primary/30 hover:bg-primary/10 h-8 w-8 p-0 shrink-0" onClick={() => updateStatus(applicant.id, "verified")}>
                               <CheckCircle className="h-4 w-4" />
                             </Button>
-                            <Button size="sm" variant="outline" title="Tolak" className="text-destructive border-destructive/30 hover:bg-destructive/10 h-8 w-8 p-0" onClick={() => updateStatus(applicant.id, "rejected")}>
+                            <Button size="sm" variant="outline" title="Tolak" className="text-destructive border-destructive/30 hover:bg-destructive/10 h-8 w-8 p-0 shrink-0" onClick={() => updateStatus(applicant.id, "rejected")}>
                               <XCircle className="h-4 w-4" />
                             </Button>
                           </>
                         )}
                         
-                        <Button size="sm" variant="outline" title="Kirim Tagihan WA" className="text-amber-600 border-amber-200 hover:bg-amber-50 h-8 px-2 gap-1" onClick={() => sendWAMessage(applicant, "tagihan")}>
+                        <Button size="sm" variant="outline" title="Kirim Tagihan WA" className="text-amber-600 border-amber-200 hover:bg-amber-50 h-8 px-2 gap-1 shrink-0" onClick={() => sendWAMessage(applicant, "tagihan")}>
                           <MessageSquare className="h-3.5 w-3.5" />
-                          <span className="text-[10px] uppercase font-bold hidden xl:inline">Tagihan</span>
+                          <span className="text-[10px] uppercase font-bold">Tagihan</span>
                         </Button>
 
-                        <Button size="sm" variant="outline" title="Kirim Kelulusan WA" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50 h-8 px-2 gap-1" onClick={() => sendWAMessage(applicant, "penerimaan")}>
+                        <Button size="sm" variant="outline" title="Kirim Kelulusan WA" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50 h-8 px-2 gap-1 shrink-0" onClick={() => sendWAMessage(applicant, "penerimaan")}>
                           <MessageSquare className="h-3.5 w-3.5" />
-                          <span className="text-[10px] uppercase font-bold hidden xl:inline">Lulus</span>
+                          <span className="text-[10px] uppercase font-bold">Lulus</span>
                         </Button>
 
-                        <Button size="sm" variant="outline" title="Hapus Peserta" className="text-red-600 border-red-200 hover:bg-red-50 h-8 w-8 p-0" onClick={() => handleDelete(applicant)}>
+                        <Button size="sm" variant="outline" title="Hapus Peserta" className="text-red-600 border-red-200 hover:bg-red-50 h-8 w-8 p-0 shrink-0" onClick={() => handleDelete(applicant)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
                   </TableRow>
                 ))}
+                {filtered.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      {loading ? "Memuat data..." : "Belum ada pendaftar."}
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
