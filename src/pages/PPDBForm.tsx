@@ -10,7 +10,7 @@ export default function RegistrationForm() {
   const navigate = useNavigate();
   const { profile } = useAuth();
 
-  // --- STATE DATA FORM (STRUKTUR LENGKAP 500+ BARIS) ---
+  // --- STATE DATA FORM ---
   const [formData, setFormData] = useState({
     // IDENTITAS ANAK
     kelasTujuan: '',
@@ -145,11 +145,11 @@ export default function RegistrationForm() {
 
     if (step === 1) {
       if (!formData.namaLengkap || !nameRegex.test(formData.namaLengkap)) {
-        toast.error('Nama Lengkap Anak minimal 3 karakter (gunakan huruf, titik, atau kutipan).');
+        toast.error('Nama Lengkap Anak minimal 3 karakter (gunakan huruf, titik, atau spasi).');
         return;
       }
-      if (!formData.nikAnak || !nikRegex.test(formData.nikAnak)) {
-        toast.error('NIK Anak wajib 16 digit angka.');
+      if (formData.nikAnak && !nikRegex.test(formData.nikAnak)) {
+        toast.error('Jika diisi, NIK Anak harus 16 digit angka.');
         return;
       }
       if (!formData.kelasTujuan) {
@@ -164,13 +164,15 @@ export default function RegistrationForm() {
         return;
       }
       if (formData.nikAyah && !nikRegex.test(formData.nikAyah)) {
-        toast.error('NIK Ayah wajib 16 digit angka.');
+        toast.error('Jika diisi, NIK Ayah harus 16 digit angka.');
         return;
       }
-      const cleanPhone = (formData.telpAyah || "").replace(/\D/g, "");
-      if (!cleanPhone || !phoneRegex.test(cleanPhone)) {
-        toast.error('Nomor HP Ayah tidak valid (harus berawal 08/62, min 10 digit).');
-        return;
+      if (formData.telpAyah) {
+        const cleanPhone = formData.telpAyah.replace(/\D/g, "");
+        if (!phoneRegex.test(cleanPhone)) {
+          toast.error('Jika diisi, Nomor HP Ayah harus valid (awal 08/62, min 10 digit).');
+          return;
+        }
       }
     }
     
@@ -180,13 +182,15 @@ export default function RegistrationForm() {
         return;
       }
       if (formData.nikIbu && !nikRegex.test(formData.nikIbu)) {
-        toast.error('NIK Ibu wajib 16 digit angka.');
+        toast.error('Jika diisi, NIK Ibu harus 16 digit angka.');
         return;
       }
-      const cleanPhone = (formData.telpIbu || "").replace(/\D/g, "");
-      if (!cleanPhone || !phoneRegex.test(cleanPhone)) {
-        toast.error('Nomor HP Ibu tidak valid (harus berawal 08/62, min 10 digit).');
-        return;
+      if (formData.telpIbu) {
+        const cleanPhone = formData.telpIbu.replace(/\D/g, "");
+        if (!phoneRegex.test(cleanPhone)) {
+          toast.error('Jika diisi, Nomor HP Ibu harus valid (awal 08/62, min 10 digit).');
+          return;
+        }
       }
     }
     
@@ -206,17 +210,23 @@ export default function RegistrationForm() {
     setError('');
 
     try {
-      if (!profile?.id) throw new Error("Sesi berakhir, silakan login kembali.");
-      const editId = localStorage.getItem('ppdbEditId');
+      // Pengecekan sesi yang lebih kuat (Anti Sesi Berakhir di Mobile)
+      let validUserId = profile?.id;
+      if (!validUserId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        validUserId = user?.id;
+      }
 
+      if (!validUserId) throw new Error("Sesi berakhir atau gagal dimuat, silakan login kembali.");
+      
+      const editId = localStorage.getItem('ppdbEditId');
       let uploadedUrls: { [key: string]: string } = {};
 
       // 1. PROSES UPLOAD FILE KE STORAGE
       for (const [key, file] of Object.entries(files)) {
         if (file) {
           const fileExt = file.name.split('.').pop();
-          // Gunakan folder per User ID agar rapi
-          const fileName = `${profile.id}/${key}_${Date.now()}.${fileExt}`;
+          const fileName = `${validUserId}/${key}_${Date.now()}.${fileExt}`;
 
           const { error: uploadError } = await supabase.storage
             .from('dokumen-ppdb')
@@ -242,7 +252,7 @@ export default function RegistrationForm() {
         gender: formData.jenisKelamin,
         child_order: parseInt(formData.anakKe) || 1,
         address: formData.alamatAyah,
-        parent_id: profile.id,
+        parent_id: validUserId,
         status: 'pending' as const,
         metadata: finalMetadata
       };
@@ -326,7 +336,7 @@ export default function RegistrationForm() {
                 <input type="text" name="namaPanggilan" value={formData.namaPanggilan} onChange={handleInputChange} className={inputClass} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">NIK Anak *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">NIK Anak</label>
                 <input type="text" name="nikAnak" value={formData.nikAnak} onChange={handleInputChange} className={inputClass} maxLength={16} />
               </div>
               <div>
@@ -348,7 +358,16 @@ export default function RegistrationForm() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Lahir</label>
-                <input type="date" name="tanggalLahirAnak" value={formData.tanggalLahirAnak} onChange={handleInputChange} className={inputClass} />
+                <input 
+                  type="text" 
+                  name="tanggalLahirAnak" 
+                  value={formData.tanggalLahirAnak} 
+                  onChange={handleInputChange} 
+                  onFocus={(e) => (e.target.type = "date")}
+                  onBlur={(e) => (e.target.type = e.target.value ? "date" : "text")}
+                  placeholder="dd/mm/yyyy"
+                  className={inputClass} 
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status Anak</label>
@@ -418,11 +437,20 @@ export default function RegistrationForm() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Lahir Ayah</label>
-                <input type="date" name="tanggalLahirAyah" value={formData.tanggalLahirAyah} onChange={handleInputChange} className={inputClass} />
+                <input 
+                  type="text" 
+                  name="tanggalLahirAyah" 
+                  value={formData.tanggalLahirAyah} 
+                  onChange={handleInputChange} 
+                  onFocus={(e) => (e.target.type = "date")}
+                  onBlur={(e) => (e.target.type = e.target.value ? "date" : "text")}
+                  placeholder="dd/mm/yyyy"
+                  className={inputClass} 
+                />
               </div>
               <div className="col-span-1 md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nomor Telp / WA *</label>
-                <input type="tel" name="telpAyah" value={formData.telpAyah} onChange={handleInputChange} className={inputClass} required={step === 2} />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nomor Telp / WA</label>
+                <input type="tel" name="telpAyah" value={formData.telpAyah} onChange={handleInputChange} className={inputClass} />
               </div>
               <div className="col-span-1 md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Alamat Rumah Lengkap</label>
@@ -479,11 +507,20 @@ export default function RegistrationForm() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Lahir Ibu</label>
-                <input type="date" name="tanggalLahirIbu" value={formData.tanggalLahirIbu} onChange={handleInputChange} className={inputClass} />
+                <input 
+                  type="text" 
+                  name="tanggalLahirIbu" 
+                  value={formData.tanggalLahirIbu} 
+                  onChange={handleInputChange} 
+                  onFocus={(e) => (e.target.type = "date")}
+                  onBlur={(e) => (e.target.type = e.target.value ? "date" : "text")}
+                  placeholder="dd/mm/yyyy"
+                  className={inputClass} 
+                />
               </div>
               <div className="col-span-1 md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nomor Telp / WA Ibu *</label>
-                <input type="tel" name="telpIbu" value={formData.telpIbu} onChange={handleInputChange} className={inputClass} required={step === 3} />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nomor Telp / WA Ibu</label>
+                <input type="tel" name="telpIbu" value={formData.telpIbu} onChange={handleInputChange} className={inputClass} />
               </div>
               <div className="col-span-1 md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Alamat Lengkap Ibu</label>
