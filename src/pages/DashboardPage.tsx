@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import BannerCarousel from "@/components/dashboard/BannerCarousel";
 import { LogOut, Plus, Baby, Calendar, MapPin, User, Edit, Search, Users, Landmark } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import LogoMark from "@/components/LogoMark";
 
 interface Child {
   id: string;
@@ -171,7 +172,7 @@ export default function DashboardPage() {
       <header className="bg-white border-b sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <img src="/logo.png" alt="Logo GenQuPa" className="w-8 h-8 object-contain" />
+            <LogoMark className="w-10 h-10" imageClassName="w-10 h-10" src="/logo.png" />
             <span className="font-bold text-emerald-900">PAUD GenQuPa</span>
           </Link>
           <div className="flex items-center gap-4">

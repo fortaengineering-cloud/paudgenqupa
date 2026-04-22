@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { loginAdmin } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, ShieldCheck, Eye, EyeOff } from "lucide-react";
+import { Loader2, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import LogoMark from "@/components/LogoMark";
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
@@ -50,9 +51,7 @@ export default function AdminLoginPage() {
 
         <Card className="border-0 shadow-xl">
           <CardHeader className="text-center">
-            <div className="w-14 h-14 rounded-full gradient-islamic flex items-center justify-center mx-auto mb-2">
-              <ShieldCheck className="h-7 w-7 text-primary-foreground" />
-            </div>
+            <LogoMark className="mx-auto mb-2" />
             <CardTitle className="text-2xl">Login Admin</CardTitle>
             <CardDescription>Akses khusus untuk pengelola PAUD GenQuPa</CardDescription>
           </CardHeader>
