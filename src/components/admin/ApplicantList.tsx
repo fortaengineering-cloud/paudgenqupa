@@ -9,7 +9,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Search, CheckCircle, XCircle, Clock, Users, Download, MessageSquare, Trash2, Edit, ExternalLink, FileText } from "lucide-react";
+import { Search, CheckCircle, XCircle, Clock, Users, Download, MessageSquare, Trash2, Edit, ExternalLink, FileText, Wallet } from "lucide-react";
 import { logActivity } from "@/lib/logger";
 
 interface Applicant {
@@ -54,6 +54,10 @@ export default function ApplicantList() {
   const [editingId, setEditingId] = useState<string>("");
   const [savingEdit, setSavingEdit] = useState(false);
   const [editData, setEditData] = useState<any>({});
+
+  // STATE UNTUK INPUT PEMBAYARAN MANUAL (WA)
+  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
+  const [payData, setPayData] = useState({ childId: "", childName: "", amount: "200000", note: "Konfirmasi via WhatsApp" });
 
   useEffect(() => {
     fetchApplicants();
@@ -161,6 +165,31 @@ export default function ApplicantList() {
       fetchApplicants();
     } catch (error: any) {
       toast({ title: "Gagal Menghapus", description: error.message, variant: "destructive" });
+    }
+  };
+
+  // --- FUNGSI BUKA MODAL BAYAR MANUAL ---
+  const handleOpenPayModal = (app: Applicant) => {
+    setPayData({ childId: app.id, childName: app.full_name, amount: "200000", note: "Konfirmasi via WhatsApp" });
+    setIsPayModalOpen(true);
+  };
+
+  const handleSavePayment = async () => {
+    if (!payData.amount) return;
+    try {
+      const { error } = await supabase.from('payments' as any).insert([{
+        child_id: payData.childId,
+        amount: parseInt(payData.amount),
+        status: 'verified',
+        notes: payData.note
+      }]);
+      if (error) throw error;
+      
+      toast({ title: "Pembayaran Dicatat!", description: `Data pembayaran ${payData.childName} berhasil disimpan.` });
+      setIsPayModalOpen(false);
+      logActivity('Input Bayar WA', `Input manual bayar ${payData.childName} nominal ${payData.amount}`);
+    } catch (error: any) {
+      toast({ title: "Gagal", description: error.message, variant: "destructive" });
     }
   };
 
@@ -404,6 +433,11 @@ export default function ApplicantList() {
                           <Edit className="h-4 w-4" />
                         </Button>
 
+                        {/* Tombol Input Bayar Manual */}
+                        <Button size="sm" variant="outline" title="Input Bayar (WA)" className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 h-8 w-8 p-0 shrink-0" onClick={() => handleOpenPayModal(applicant)}>
+                          <Wallet className="h-4 w-4" />
+                        </Button>
+
                         {applicant.status === "pending" && (
                           <>
                             <Button size="sm" variant="outline" title="Verifikasi" className="text-primary border-primary/30 hover:bg-primary/10 h-8 w-8 p-0 shrink-0" onClick={() => updateStatus(applicant.id, "verified")}>
@@ -444,6 +478,41 @@ export default function ApplicantList() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ================= MODAL INPUT BAYAR MANUAL (WA) ================= */}
+      {isPayModalOpen && (
+        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="p-5 border-b bg-indigo-50 flex items-center justify-between">
+              <h3 className="font-bold text-indigo-900 flex items-center gap-2">
+                <Wallet className="w-5 h-5"/> Catat Pembayaran (WA)
+              </h3>
+              <button onClick={() => setIsPayModalOpen(false)} className="text-gray-400 hover:text-red-500">
+                <XCircle className="w-6 h-6"/>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-gray-600 italic text-center">
+                Masukkan data transfer yang dikirim orang tua <b>{payData.childName}</b> via WA.
+              </p>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">NOMINAL (RP)</label>
+                <input type="number" className={inputClass} value={payData.amount} onChange={e => setPayData({...payData, amount: e.target.value})} placeholder="Contoh: 200000"/>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">CATATAN ADMIN</label>
+                <textarea rows={2} className={inputClass} value={payData.note} onChange={e => setPayData({...payData, note: e.target.value})} />
+              </div>
+            </div>
+            <div className="p-4 border-t bg-gray-50 flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setIsPayModalOpen(false)}>Batal</Button>
+              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold" onClick={handleSavePayment}>
+                Simpan Pembayaran
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ================= MODAL EDIT DATA & DOKUMEN ================= */}
       {isEditModalOpen && (
