@@ -156,6 +156,10 @@ export default function RegistrationForm() {
         toast.error('Pilih Kelas Tujuan terlebih dahulu.');
         return;
       }
+      if (!formData.jenisKelamin) {
+        toast.error('Pilih Jenis Kelamin terlebih dahulu.');
+        return;
+      }
     }
     
     if (step === 2) {
@@ -340,7 +344,7 @@ export default function RegistrationForm() {
                 <input type="text" name="nikAnak" value={formData.nikAnak} onChange={handleInputChange} className={inputClass} maxLength={16} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Jenis Kelamin</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Jenis Kelamin *</label>
                 <div className="flex space-x-6 mt-1">
                   <label className="flex items-center cursor-pointer">
                     <input type="radio" name="jenisKelamin" value="Laki-laki" onChange={handleInputChange} checked={formData.jenisKelamin === 'Laki-laki'} className="text-emerald-600 w-4 h-4" />

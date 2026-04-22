@@ -168,9 +168,15 @@ export default function ApplicantList() {
   const handleEditClick = (applicant: Applicant) => {
     setEditingId(applicant.id);
     const m = applicant.metadata || {};
+    
+    // AUTO-CONVERT JENIS KELAMIN AGAR SESUAI DATABASE (MENCEGAH ERROR CHECK CONSTRAINT)
+    let safeGender = applicant.gender || "";
+    if (safeGender.toLowerCase() === "laki-laki" || safeGender.toLowerCase() === "l") safeGender = "male";
+    if (safeGender.toLowerCase() === "perempuan" || safeGender.toLowerCase() === "p") safeGender = "female";
+
     setEditData({
       full_name: applicant.full_name || "",
-      gender: applicant.gender || "",
+      gender: safeGender,
       birth_place: applicant.birth_place || "",
       birth_date: applicant.birth_date || "",
       address: applicant.address || "",
@@ -218,6 +224,16 @@ export default function ApplicantList() {
 
   // --- FUNGSI SIMPAN PERUBAHAN ---
   const handleSaveEdit = async () => {
+    // Validasi Anti-Lupa Jenis Kelamin
+    if (!editData.gender || !['male', 'female'].includes(editData.gender)) {
+      toast({ 
+        title: "Perhatian", 
+        description: "Pilih Jenis Kelamin (Laki-laki / Perempuan) terlebih dahulu.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
     setSavingEdit(true);
     try {
       const updatedMetadata = {
@@ -277,7 +293,7 @@ export default function ApplicantList() {
     const rows = filtered.map(app => {
       const m = app.metadata || {};
       const data = [
-        app.full_name, app.gender, app.birth_place, app.birth_date, app.child_order, app.status,
+        app.full_name, app.gender === 'male' ? 'Laki-laki' : 'Perempuan', app.birth_place, app.birth_date, app.child_order, app.status,
         m.namaAyah || "", m.telpAyah || "", m.namaIbu || "", m.telpIbu || "", app.address || ""
       ];
       return data.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",");
@@ -368,7 +384,7 @@ export default function ApplicantList() {
                     <TableCell>
                       <div>
                         <p className="font-medium">{applicant.full_name}</p>
-                        <p className="text-xs text-muted-foreground">{applicant.gender}</p>
+                        <p className="text-xs text-muted-foreground">{applicant.gender === 'male' ? 'Laki-laki' : applicant.gender === 'female' ? 'Perempuan' : applicant.gender}</p>
                       </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
