@@ -11,7 +11,7 @@ interface LogoMarkProps {
 export default function LogoMark({
   className,
   imageClassName,
-  src = "/logo-192x192.png",
+  src = "/logo.png",
 }: LogoMarkProps) {
   const [hasError, setHasError] = useState(false);
 
