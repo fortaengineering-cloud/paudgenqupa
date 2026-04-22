@@ -7,7 +7,7 @@ import { logout } from "@/lib/auth";
 import { useNavigate } from "react-router-dom";
 import InstallPWAButton from "@/components/InstallPWAButton";
 
-const LOGO_URL = "https://cpjkuzfoqdzqozndampm.supabase.co/storage/v1/object/public/gallery/pwa%2Flogo.png";
+const LOGO_URL = "/logo.png";
 
 const navItems = [
   { label: "Beranda", href: "#beranda" },
