@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CheckCircle2, XCircle, Clock, Eye, Landmark, ExternalLink, ImageIcon } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Eye, Landmark, ExternalLink, ImageIcon, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -28,26 +28,17 @@ export default function PaymentManager() {
     try {
       setLoading(true);
       
-      // Cek sesi saat ini untuk debugging
-      const { data: sessionData } = await supabase.auth.getSession();
-      console.log("Current session user:", sessionData.session?.user?.email);
-      console.log("Current session role:", sessionData.session?.user?.role);
-
-      // Ambil data pembayaran
+      // Ambil data pembayaran sekaligus JOIN ke tabel children untuk mendapatkan nama anak
       const { data, error } = await supabase
         .from("payments" as any)
-        .select("*") 
+        .select("*, children(full_name)") 
         .order("created_at", { ascending: false });
       
       if (error) {
         console.error("Fetch payments error:", error);
         toast.error("Gagal mengambil data: " + error.message);
       } else {
-        console.log("Payments data received:", data);
         setPayments(data || []);
-        if (data && data.length > 0) {
-          toast.success(`Berhasil memuat ${data.length} transaksi.`);
-        }
       }
     } catch (err: any) {
       console.error("Unexpected fetch error:", err);
@@ -103,6 +94,28 @@ export default function PaymentManager() {
       );
       
       fetchPayments();
+    }
+  };
+
+  // --- FUNGSI HAPUS PEMBAYARAN ---
+  const handleDelete = async (id: string, childName: string) => {
+    if (!window.confirm(`Yakin ingin MENGHAPUS data pembayaran atas nama ${childName}? Tindakan ini tidak dapat dibatalkan.`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("payments" as any)
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast.success("Data pembayaran berhasil dihapus.");
+      logActivity(`Hapus Pembayaran`, `Menghapus riwayat pembayaran untuk ${childName}`);
+      fetchPayments();
+    } catch (error: any) {
+      toast.error("Gagal menghapus data: " + error.message);
     }
   };
 
@@ -166,115 +179,132 @@ export default function PaymentManager() {
       <Card>
         <CardContent className="p-0">
           <div className="overflow-auto">
-            <Table>
+            <Table className="min-w-[800px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Tanggal</TableHead>
-                  <TableHead>Identitas (Ortu/Siswa)</TableHead>
-                  <TableHead>Kategori</TableHead>
-                  <TableHead>Nominal</TableHead>
-                  <TableHead>Bukti</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Aksi</TableHead>
+                  <TableHead className="whitespace-nowrap">Tanggal</TableHead>
+                  <TableHead className="whitespace-nowrap">Nama Siswa</TableHead>
+                  <TableHead className="whitespace-nowrap">Kategori</TableHead>
+                  <TableHead className="whitespace-nowrap">Nominal</TableHead>
+                  <TableHead className="whitespace-nowrap">Bukti</TableHead>
+                  <TableHead className="whitespace-nowrap">Status</TableHead>
+                  <TableHead className="whitespace-nowrap min-w-[150px]">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {payments.length > 0 ? (
-                  payments.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell className="text-xs">
-                        {new Date(p.created_at).toLocaleDateString("id-ID")}
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-0.5">
-                          <p className="font-bold text-emerald-800 text-xs">{p.children?.full_name || "Data Siswa"}</p>
-                          <p className="text-[10px] text-muted-foreground uppercase">ID: {p.child_id?.substring(0, 8)}...</p>
-                        </div>
-                      </TableCell>
-                    <TableCell className="font-medium text-xs">
-                      {p.category}
-                    </TableCell>
-                    <TableCell className="font-bold whitespace-nowrap">
-                      Rp {p.amount.toLocaleString("id-ID")}
-                    </TableCell>
-                    <TableCell>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button size="sm" variant="outline" className="h-8 gap-1.5 border-emerald-200 text-emerald-700 hover:bg-emerald-50">
-                            <Eye className="h-3.5 w-3.5" />
-                            Lihat
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-3xl">
-                          <DialogHeader>
-                            <DialogTitle>Bukti Transfer - ID Anak {p.child_id?.substring(0, 5)}</DialogTitle>
-                          </DialogHeader>
-                          <div className="mt-4 border rounded-xl overflow-hidden bg-accent/20 flex items-center justify-center p-4 min-h-[300px]">
-                            {p.proof_url ? (
-                              <img src={p.proof_url} alt="Bukti Transfer" className="max-h-[60vh] object-contain shadow-2xl" />
-                            ) : (
-                              <p className="text-muted-foreground">Gambar tidak tersedia</p>
-                            )}
+                  payments.map((p) => {
+                    const childFullName = p.children?.full_name || "Nama Tidak Ditemukan";
+                    return (
+                      <TableRow key={p.id}>
+                        <TableCell className="text-xs whitespace-nowrap">
+                          {new Date(p.created_at).toLocaleDateString("id-ID")}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <div className="space-y-0.5">
+                            <p className="font-bold text-emerald-800 text-sm">{childFullName}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase">ID: {p.child_id?.substring(0, 8)}...</p>
                           </div>
-                          <DialogFooter className="sm:justify-between items-center mt-4">
-                            <div className="text-xs text-muted-foreground font-mono">
-                              ID: {p.child_id} | {p.category}
-                            </div>
-                            <Button asChild size="sm" variant="outline">
-                              <a href={p.proof_url} target="_blank" rel="noreferrer" className="flex items-center gap-2">
-                                <ExternalLink className="h-3.5 w-3.5" />
-                                Buka di Tab Baru
-                              </a>
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                    </TableCell>
-                    <TableCell>
-                      {p.status === "pending" || !p.status ? (
-                        <Badge variant="outline" className="text-amber-600 bg-amber-50">Menunggu</Badge>
-                      ) : p.status === "verified" ? (
-                        <Badge variant="outline" className="text-emerald-700 bg-emerald-50 border-emerald-200">Terverifikasi</Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-destructive bg-red-50 border-red-200">Ditolak</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1.5 items-center">
-                        {p.status === "pending" ? (
-                          <>
-                            <Button
-                              size="sm"
-                              className="bg-emerald-600 hover:bg-emerald-700 h-8 gap-1"
-                              onClick={() => updateStatus(p.id, "verified")}
-                            >
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-                              <span className="text-[10px] uppercase font-bold">Verifikasi</span>
-                            </Button>
+                        </TableCell>
+                        <TableCell className="font-medium text-xs whitespace-nowrap">
+                          {p.category}
+                        </TableCell>
+                        <TableCell className="font-bold whitespace-nowrap">
+                          Rp {p.amount.toLocaleString("id-ID")}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button size="sm" variant="outline" className="h-8 gap-1.5 border-emerald-200 text-emerald-700 hover:bg-emerald-50">
+                                <Eye className="h-3.5 w-3.5" />
+                                Lihat
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-3xl">
+                              <DialogHeader>
+                                <DialogTitle>Bukti Transfer - {childFullName}</DialogTitle>
+                              </DialogHeader>
+                              <div className="mt-4 border rounded-xl overflow-hidden bg-accent/20 flex items-center justify-center p-4 min-h-[300px]">
+                                {p.proof_url ? (
+                                  <img src={p.proof_url} alt="Bukti Transfer" className="max-h-[60vh] object-contain shadow-2xl" />
+                                ) : (
+                                  <p className="text-muted-foreground">Gambar tidak tersedia / Input Manual</p>
+                                )}
+                              </div>
+                              <DialogFooter className="sm:justify-between items-center mt-4">
+                                <div className="text-xs text-muted-foreground font-mono">
+                                  ID Transaksi: {p.id.substring(0, 8)} | {p.category}
+                                </div>
+                                {p.proof_url && (
+                                  <Button asChild size="sm" variant="outline">
+                                    <a href={p.proof_url} target="_blank" rel="noreferrer" className="flex items-center gap-2">
+                                      <ExternalLink className="h-3.5 w-3.5" />
+                                      Buka di Tab Baru
+                                    </a>
+                                  </Button>
+                                )}
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {p.status === "pending" || !p.status ? (
+                            <Badge variant="outline" className="text-amber-600 bg-amber-50">Menunggu</Badge>
+                          ) : p.status === "verified" ? (
+                            <Badge variant="outline" className="text-emerald-700 bg-emerald-50 border-emerald-200">Terverifikasi</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-destructive bg-red-50 border-red-200">Ditolak</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <div className="flex gap-1.5 items-center">
+                            {p.status === "pending" ? (
+                              <>
+                                <Button
+                                  size="sm"
+                                  className="bg-emerald-600 hover:bg-emerald-700 h-8 w-8 p-0"
+                                  title="Verifikasi"
+                                  onClick={() => updateStatus(p.id, "verified")}
+                                >
+                                  <CheckCircle2 className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-destructive border-red-100 hover:bg-red-50 hover:text-destructive h-8 w-8 p-0"
+                                  title="Tolak"
+                                  onClick={() => updateStatus(p.id, "rejected")}
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 text-xs text-muted-foreground"
+                                onClick={() => updateStatus(p.id, "pending")}
+                              >
+                                Ubah Status
+                              </Button>
+                            )}
+                            
+                            {/* Tombol Hapus */}
                             <Button
                               size="sm"
                               variant="outline"
-                              className="text-destructive border-red-100 hover:bg-red-50 hover:text-destructive h-8 gap-1"
-                              onClick={() => updateStatus(p.id, "rejected")}
+                              className="text-red-600 border-red-200 hover:bg-red-50 h-8 w-8 p-0"
+                              title="Hapus Data"
+                              onClick={() => handleDelete(p.id, childFullName)}
                             >
-                              <XCircle className="h-3.5 w-3.5" />
-                              <span className="text-[10px] uppercase font-bold">Tolak</span>
+                              <Trash2 className="h-4 w-4" />
                             </Button>
-                          </>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 text-xs text-muted-foreground"
-                            onClick={() => updateStatus(p.id, "pending")}
-                          >
-                            Ubah Status
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))) : (
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                       {loading ? (
@@ -282,7 +312,6 @@ export default function PaymentManager() {
                       ) : (
                         <div className="space-y-2">
                           <p>Belum ada data pembayaran yang ditemukan.</p>
-                          <p className="text-[10px]">Tips: Jika data ada di database tapi tidak muncul di sini, pastikan kebijakan RLS pada tabel 'payments' sudah diatur untuk mengizinkan Admin membaca data.</p>
                         </div>
                       )}
                     </TableCell>

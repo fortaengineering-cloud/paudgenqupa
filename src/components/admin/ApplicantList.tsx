@@ -27,6 +27,7 @@ interface Applicant {
     phone: string;
     address: string | null;
   } | null;
+  payments?: any[]; 
   metadata?: any;
 }
 
@@ -73,7 +74,8 @@ export default function ApplicantList() {
     return cleaned;
   };
 
-  const sendWAMessage = (applicant: any, type: "tagihan" | "penerimaan") => {
+  // --- PERBAIKAN: Menambahkan Update ke Database Setelah Klik WA ---
+  const sendWAMessage = async (applicant: any, type: "tagihan" | "penerimaan") => {
     const saved = localStorage.getItem("appSettings");
     const settings = saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
     
@@ -108,15 +110,36 @@ export default function ApplicantList() {
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodedMessage}`;
     
+    // Buka Tab WA
     window.open(whatsappUrl, "_blank");
-    
     logActivity(`Kirim WhatsApp`, `Mengirim pesan ${type} ke ${parentNameCombined}`);
+
+    // Update Status di Database agar tombol menjadi Hijau
+    try {
+      const currentMetadata = applicant.metadata || {};
+      const updatedMetadata = {
+        ...currentMetadata,
+        ...(type === "tagihan" ? { wa_tagihan_sent: true } : { wa_lulus_sent: true })
+      };
+
+      const { error } = await supabase
+        .from('children' as any)
+        .update({ metadata: updatedMetadata })
+        .eq('id', applicant.id);
+
+      if (error) throw error;
+      
+      // Refresh Data agar warna tombol berubah otomatis
+      fetchApplicants();
+    } catch (err) {
+      console.error("Gagal update status pengiriman WA:", err);
+    }
   };
 
   const fetchApplicants = async () => {
     const { data, error } = await supabase
       .from("children" as any)
-      .select("*, profiles!children_parent_id_fkey(name, phone, address)")
+      .select("*, profiles!children_parent_id_fkey(name, phone, address), payments(id, status)")
       .order("created_at", { ascending: false });
 
     if (data) setApplicants(data as unknown as Applicant[]);
@@ -182,10 +205,8 @@ export default function ApplicantList() {
     setIsSubmittingPay(true);
     
     try {
-      // Default jika tidak ada file yang diunggah
       let uploadedUrl = "-"; 
       
-      // Jika admin melampirkan foto bukti TF
       if (payFile) {
         const fileExt = payFile.name.split('.').pop();
         const fileName = `receipts_wa/${payData.childId}_${Date.now()}.${fileExt}`;
@@ -200,7 +221,6 @@ export default function ApplicantList() {
         uploadedUrl = data.publicUrl;
       }
 
-      // KUNCI PERBAIKAN: Menggunakan nama kolom proof_url dan category agar lolos database
       const payload: any = {
         child_id: payData.childId,
         amount: parseInt(payData.amount),
@@ -216,6 +236,8 @@ export default function ApplicantList() {
       toast({ title: "Pembayaran Dicatat!", description: `Data pembayaran ${payData.childName} berhasil disimpan.` });
       setIsPayModalOpen(false);
       logActivity('Input Bayar WA', `Input manual bayar ${payData.childName} nominal ${payData.amount}`);
+      
+      fetchApplicants();
     } catch (error: any) {
       toast({ title: "Gagal", description: error.message, variant: "destructive" });
     } finally {
@@ -410,7 +432,7 @@ export default function ApplicantList() {
         </Select>
       </div>
 
-      {/* Table (SUDAH FIX SCROLL HORIZONTAL & KOLOM LENGKAP) */}
+      {/* Table */}
       <Card>
         <CardContent className="p-0">
           <div className="w-full overflow-x-auto">
@@ -419,83 +441,144 @@ export default function ApplicantList() {
                 <TableRow>
                   <TableHead className="whitespace-nowrap">Nama Anak</TableHead>
                   <TableHead className="whitespace-nowrap">TTL</TableHead>
-                  <TableHead className="whitespace-nowrap">Orang Tua</TableHead>
+                  <TableHead className="whitespace-nowrap">Orang Tua/Wali</TableHead>
                   <TableHead className="whitespace-nowrap">No. HP (WA)</TableHead>
                   <TableHead className="whitespace-nowrap">Status</TableHead>
                   <TableHead className="whitespace-nowrap min-w-[200px]">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((applicant) => (
-                  <TableRow key={applicant.id}>
-                    <TableCell className="whitespace-nowrap">
-                      <div>
-                        <p className="font-medium">{applicant.full_name}</p>
-                        <p className="text-xs text-muted-foreground">{applicant.gender === 'male' ? 'Laki-laki' : applicant.gender === 'female' ? 'Perempuan' : applicant.gender}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                      {applicant.birth_place}, {applicant.birth_date ? new Date(applicant.birth_date).toLocaleDateString("id-ID") : "-"}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-sm">
-                      {applicant.metadata?.namaAyah || applicant.profiles?.name || "-"}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-sm font-medium">
-                      {(() => {
-                        const phone = applicant.metadata?.telpAyah || applicant.profiles?.phone;
-                        if (!phone) return <span className="text-muted-foreground">-</span>;
-                        const waLink = `https://wa.me/${formatPhoneForWA(phone)}`;
-                        return (
-                          <a href={waLink} target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:text-emerald-800 hover:underline flex items-center gap-1 w-fit">
-                            {phone} <ExternalLink className="w-3 h-3" />
-                          </a>
-                        );
-                      })()}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      <Badge variant={statusConfig[applicant.status].variant}>
-                        {statusConfig[applicant.status].label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      <div className="flex items-center gap-1.5 flex-nowrap">
-                        <Button size="sm" variant="outline" title="Detail & Edit Data" className="text-blue-600 border-blue-200 hover:bg-blue-50 h-8 w-8 p-0 shrink-0" onClick={() => handleEditClick(applicant)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                {filtered.map((applicant) => {
+                  const paymentList = applicant.payments || [];
+                  const hasPayment = paymentList.length > 0;
+                  const isPaymentVerified = paymentList.some((p: any) => p.status === 'verified');
+                  
+                  // STATUS TOMBOL WA DARI METADATA DATABASE
+                  const isTagihanSent = applicant.metadata?.wa_tagihan_sent === true;
+                  const isLulusSent = applicant.metadata?.wa_lulus_sent === true;
 
-                        {/* Tombol Input Bayar Manual */}
-                        <Button size="sm" variant="outline" title="Input Bayar (WA)" className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 h-8 w-8 p-0 shrink-0" onClick={() => handleOpenPayModal(applicant)}>
-                          <Wallet className="h-4 w-4" />
-                        </Button>
+                  return (
+                    <TableRow key={applicant.id}>
+                      <TableCell className="whitespace-nowrap">
+                        <div>
+                          <p className="font-medium">{applicant.full_name}</p>
+                          <p className="text-xs text-muted-foreground">{applicant.gender === 'male' ? 'Laki-laki' : applicant.gender === 'female' ? 'Perempuan' : applicant.gender}</p>
+                        </div>
+                      </TableCell>
+                      
+                      <TableCell className="whitespace-nowrap">
+                        <div className="flex flex-col">
+                          <span className="text-[11px] text-gray-500">
+                            {applicant.birth_place || "-"}
+                          </span>
+                          <span className="text-sm font-medium text-gray-900">
+                            {applicant.birth_date 
+                              ? new Date(applicant.birth_date).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' }) 
+                              : "-"}
+                          </span>
+                        </div>
+                      </TableCell>
 
-                        {applicant.status === "pending" && (
-                          <>
-                            <Button size="sm" variant="outline" title="Verifikasi" className="text-primary border-primary/30 hover:bg-primary/10 h-8 w-8 p-0 shrink-0" onClick={() => updateStatus(applicant.id, "verified")}>
-                              <CheckCircle className="h-4 w-4" />
-                            </Button>
-                            <Button size="sm" variant="outline" title="Tolak" className="text-destructive border-destructive/30 hover:bg-destructive/10 h-8 w-8 p-0 shrink-0" onClick={() => updateStatus(applicant.id, "rejected")}>
-                              <XCircle className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                        
-                        <Button size="sm" variant="outline" title="Kirim Tagihan WA" className="text-amber-600 border-amber-200 hover:bg-amber-50 h-8 px-2 gap-1 shrink-0" onClick={() => sendWAMessage(applicant, "tagihan")}>
-                          <MessageSquare className="h-3.5 w-3.5" />
-                          <span className="text-[10px] uppercase font-bold">Tagihan</span>
-                        </Button>
+                      <TableCell className="whitespace-nowrap text-sm">
+                        {(() => {
+                          const ayah = applicant.metadata?.namaAyah;
+                          const ibu = applicant.metadata?.namaIbu;
+                          if (ayah && ibu) return `${ayah} / ${ibu}`;
+                          if (ayah) return ayah;
+                          if (ibu) return ibu;
+                          return applicant.profiles?.name || "-";
+                        })()}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-sm font-medium">
+                        {(() => {
+                          const phone = applicant.profiles?.phone || applicant.metadata?.telpAyah || applicant.metadata?.telpIbu;
+                          if (!phone) return <span className="text-muted-foreground">-</span>;
+                          const waLink = `https://wa.me/${formatPhoneForWA(phone)}`;
+                          return (
+                            <a href={waLink} target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:text-emerald-800 hover:underline flex items-center gap-1 w-fit">
+                              {phone} <ExternalLink className="w-3 h-3" />
+                            </a>
+                          );
+                        })()}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <Badge variant={statusConfig[applicant.status].variant}>
+                          {statusConfig[applicant.status].label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 flex-nowrap">
+                          <Button size="sm" variant="outline" title="Detail & Edit Data" className="text-blue-600 border-blue-200 hover:bg-blue-50 h-8 w-8 p-0 shrink-0" onClick={() => handleEditClick(applicant)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
 
-                        <Button size="sm" variant="outline" title="Kirim Kelulusan WA" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50 h-8 px-2 gap-1 shrink-0" onClick={() => sendWAMessage(applicant, "penerimaan")}>
-                          <MessageSquare className="h-3.5 w-3.5" />
-                          <span className="text-[10px] uppercase font-bold">Lulus</span>
-                        </Button>
+                          <Button 
+                            size="sm" 
+                            variant={hasPayment ? "default" : "outline"} 
+                            title={isPaymentVerified ? "Pembayaran Lunas & Terverifikasi" : hasPayment ? "Menunggu Verifikasi Admin" : "Input Bayar (WA)"} 
+                            className={`h-8 w-8 p-0 shrink-0 transition-colors ${
+                              isPaymentVerified 
+                                ? "bg-emerald-600 hover:bg-emerald-700 text-white border-none" 
+                                : hasPayment 
+                                  ? "bg-amber-500 hover:bg-amber-600 text-white border-none" 
+                                  : "text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                            }`} 
+                            onClick={() => handleOpenPayModal(applicant)}
+                          >
+                            <Wallet className="h-4 w-4" />
+                          </Button>
 
-                        <Button size="sm" variant="outline" title="Hapus Peserta" className="text-red-600 border-red-200 hover:bg-red-50 h-8 w-8 p-0 shrink-0" onClick={() => handleDelete(applicant)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                          {applicant.status === "pending" && (
+                            <>
+                              <Button size="sm" variant="outline" title="Verifikasi" className="text-primary border-primary/30 hover:bg-primary/10 h-8 w-8 p-0 shrink-0" onClick={() => updateStatus(applicant.id, "verified")}>
+                                <CheckCircle className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="outline" title="Tolak" className="text-destructive border-destructive/30 hover:bg-destructive/10 h-8 w-8 p-0 shrink-0" onClick={() => updateStatus(applicant.id, "rejected")}>
+                                <XCircle className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                          
+                          {/* TOMBOL TAGIHAN DINAMIS */}
+                          <Button 
+                            size="sm" 
+                            variant={isTagihanSent ? "default" : "outline"} 
+                            title={isTagihanSent ? "Pesan Tagihan WA Sudah Dikirim" : "Kirim Tagihan WA"} 
+                            className={`h-8 px-2 gap-1 shrink-0 transition-colors ${
+                              isTagihanSent 
+                                ? "bg-emerald-600 hover:bg-emerald-700 text-white border-none" 
+                                : "text-amber-600 border-amber-200 hover:bg-amber-50"
+                            }`} 
+                            onClick={() => sendWAMessage(applicant, "tagihan")}
+                          >
+                            <MessageSquare className="h-3.5 w-3.5" />
+                            <span className="text-[10px] uppercase font-bold">Tagihan</span>
+                          </Button>
+
+                          {/* TOMBOL LULUS DINAMIS */}
+                          <Button 
+                            size="sm" 
+                            variant={isLulusSent ? "default" : "outline"} 
+                            title={isLulusSent ? "Pesan Kelulusan WA Sudah Dikirim" : "Kirim Kelulusan WA"} 
+                            className={`h-8 px-2 gap-1 shrink-0 transition-colors ${
+                              isLulusSent 
+                                ? "bg-emerald-600 hover:bg-emerald-700 text-white border-none" 
+                                : "text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                            }`} 
+                            onClick={() => sendWAMessage(applicant, "penerimaan")}
+                          >
+                            <MessageSquare className="h-3.5 w-3.5" />
+                            <span className="text-[10px] uppercase font-bold">Lulus</span>
+                          </Button>
+
+                          <Button size="sm" variant="outline" title="Hapus Peserta" className="text-red-600 border-red-200 hover:bg-red-50 h-8 w-8 p-0 shrink-0" onClick={() => handleDelete(applicant)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
                 {filtered.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
