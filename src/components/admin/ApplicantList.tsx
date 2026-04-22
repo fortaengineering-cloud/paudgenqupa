@@ -9,7 +9,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Search, CheckCircle, XCircle, Clock, Users, Download, MessageSquare, Trash2, Edit, ExternalLink, FileText, Wallet } from "lucide-react";
+import { Search, CheckCircle, XCircle, Clock, Users, Download, MessageSquare, Trash2, Edit, ExternalLink, FileText, Wallet, UploadCloud } from "lucide-react";
 import { logActivity } from "@/lib/logger";
 
 interface Applicant {
@@ -57,7 +57,9 @@ export default function ApplicantList() {
 
   // STATE UNTUK INPUT PEMBAYARAN MANUAL (WA)
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
+  const [isSubmittingPay, setIsSubmittingPay] = useState(false);
   const [payData, setPayData] = useState({ childId: "", childName: "", amount: "200000", note: "Konfirmasi via WhatsApp" });
+  const [payFile, setPayFile] = useState<File | null>(null);
 
   useEffect(() => {
     fetchApplicants();
@@ -171,18 +173,44 @@ export default function ApplicantList() {
   // --- FUNGSI BUKA MODAL BAYAR MANUAL ---
   const handleOpenPayModal = (app: Applicant) => {
     setPayData({ childId: app.id, childName: app.full_name, amount: "200000", note: "Konfirmasi via WhatsApp" });
+    setPayFile(null);
     setIsPayModalOpen(true);
   };
 
   const handleSavePayment = async () => {
     if (!payData.amount) return;
+    setIsSubmittingPay(true);
+    
     try {
-      const { error } = await supabase.from('payments' as any).insert([{
+      // Default jika tidak ada file yang diunggah
+      let uploadedUrl = "-"; 
+      
+      // Jika admin melampirkan foto bukti TF
+      if (payFile) {
+        const fileExt = payFile.name.split('.').pop();
+        const fileName = `receipts_wa/${payData.childId}_${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('dokumen-ppdb')
+          .upload(fileName, payFile, { upsert: true });
+
+        if (uploadError) throw new Error(`Gagal upload bukti: ${uploadError.message}`);
+
+        const { data } = supabase.storage.from('dokumen-ppdb').getPublicUrl(fileName);
+        uploadedUrl = data.publicUrl;
+      }
+
+      // KUNCI PERBAIKAN: Menggunakan nama kolom proof_url dan category agar lolos database
+      const payload: any = {
         child_id: payData.childId,
         amount: parseInt(payData.amount),
         status: 'verified',
-        notes: payData.note
-      }]);
+        notes: payData.note,
+        category: 'Pendaftaran', 
+        proof_url: uploadedUrl 
+      };
+
+      const { error } = await supabase.from('payments' as any).insert([payload]);
       if (error) throw error;
       
       toast({ title: "Pembayaran Dicatat!", description: `Data pembayaran ${payData.childName} berhasil disimpan.` });
@@ -190,6 +218,8 @@ export default function ApplicantList() {
       logActivity('Input Bayar WA', `Input manual bayar ${payData.childName} nominal ${payData.amount}`);
     } catch (error: any) {
       toast({ title: "Gagal", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSubmittingPay(false);
     }
   };
 
@@ -499,6 +529,21 @@ export default function ApplicantList() {
                 <label className="block text-xs font-bold text-gray-500 mb-1">NOMINAL (RP)</label>
                 <input type="number" className={inputClass} value={payData.amount} onChange={e => setPayData({...payData, amount: e.target.value})} placeholder="Contoh: 200000"/>
               </div>
+              
+              {/* TOMBOL UPLOAD FILE BUKTI TF */}
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">BUKTI TRANSFER (OPSIONAL)</label>
+                <div className="flex items-center gap-2 w-full">
+                  <UploadCloud className="w-5 h-5 text-gray-400 shrink-0" />
+                  <input 
+                    type="file" 
+                    accept="image/*,.pdf" 
+                    onChange={e => setPayFile(e.target.files?.[0] || null)} 
+                    className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm file:border-0 file:bg-indigo-50 file:text-indigo-700 file:font-semibold file:mr-3 hover:file:bg-indigo-100 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">CATATAN ADMIN</label>
                 <textarea rows={2} className={inputClass} value={payData.note} onChange={e => setPayData({...payData, note: e.target.value})} />
@@ -506,8 +551,8 @@ export default function ApplicantList() {
             </div>
             <div className="p-4 border-t bg-gray-50 flex justify-end gap-3">
               <Button variant="outline" onClick={() => setIsPayModalOpen(false)}>Batal</Button>
-              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold" onClick={handleSavePayment}>
-                Simpan Pembayaran
+              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold" onClick={handleSavePayment} disabled={isSubmittingPay}>
+                {isSubmittingPay ? "Mengunggah..." : "Simpan Pembayaran"}
               </Button>
             </div>
           </div>
