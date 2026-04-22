@@ -9,7 +9,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Search, CheckCircle, XCircle, Clock, Users, Download, MessageSquare } from "lucide-react";
+import { Search, CheckCircle, XCircle, Clock, Users, Download, MessageSquare, Trash2 } from "lucide-react";
 import { logActivity } from "@/lib/logger";
 
 interface Applicant {
@@ -63,7 +63,6 @@ export default function ApplicantList() {
       return;
     }
 
-    // Format phone: replace leading 0 with 62
     let formattedPhone = rawPhone.replace(/[^0-9]/g, "");
     if (formattedPhone.startsWith("0")) {
       formattedPhone = "62" + formattedPhone.slice(1);
@@ -92,7 +91,6 @@ export default function ApplicantList() {
       .replace(/\[NAMA_ANAK\]/g, applicant.full_name)
       .replace(/\[BANK_INFO\]/g, settings.bank_info);
 
-    // Gunakan api.whatsapp.com untuk kompatibilitas icon/emoji yang lebih baik di berbagai perangkat
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodedMessage}`;
     
@@ -130,6 +128,55 @@ export default function ApplicantList() {
       );
       fetchApplicants();
       toast({ title: "Berhasil!", description: `Status diubah menjadi ${statusConfig[status].label}.` });
+    }
+  };
+
+  // FITUR SAPU BERSIH (HAPUS DATA & FILE FISIK)
+  const handleDelete = async (applicant: Applicant) => {
+    if (!window.confirm(`Yakin ingin MENGHAPUS PERMANEN data Ananda ${applicant.full_name} beserta seluruh dokumen yang diupload? Tindakan ini tidak dapat dibatalkan.`)) {
+      return;
+    }
+
+    toast({ title: "Menghapus data...", description: "Sedang membersihkan file dari server." });
+
+    try {
+      // 1. Kumpulkan semua URL file yang pernah diupload dari JSON metadata
+      const filesToDelete: string[] = [];
+      if (applicant.metadata) {
+        const fileKeys = ['foto', 'kk', 'akte', 'ktp_ayah', 'ktp_ibu'];
+        fileKeys.forEach(key => {
+          const fileUrl = applicant.metadata[key];
+          if (fileUrl && typeof fileUrl === 'string' && fileUrl.includes('/dokumen-ppdb/')) {
+            // Potong URL untuk mengambil 'path' fisiknya saja (contoh: user_id/namafile.jpg)
+            const path = fileUrl.split('/dokumen-ppdb/')[1];
+            if (path) filesToDelete.push(path);
+          }
+        });
+      }
+
+      // 2. Hapus file fisiknya dari Storage Supabase jika ada
+      if (filesToDelete.length > 0) {
+        const { error: storageError } = await supabase.storage
+          .from('dokumen-ppdb')
+          .remove(filesToDelete);
+        if (storageError) console.error("Error hapus file:", storageError);
+      }
+
+      // 3. Hapus data pembayaran terkait (menghindari error foreign key)
+      await supabase.from('payments').delete().eq('child_id', applicant.id);
+
+      // 4. Hapus data pendaftarnya dari tabel children
+      const { error: dbError } = await supabase.from('children').delete().eq('id', applicant.id);
+      if (dbError) throw dbError;
+
+      // 5. Berikan notifikasi sukses & Segarkan tabel
+      toast({ title: "Sapu Bersih Berhasil!", description: `Data dan dokumen ${applicant.full_name} telah dihapus permanen.` });
+      logActivity('Hapus Pendaftar', `Menghapus data pendaftar ${applicant.full_name} dan dokumennya`);
+      fetchApplicants();
+
+    } catch (error: any) {
+      console.error("Delete error:", error);
+      toast({ title: "Gagal Menghapus", description: error.message, variant: "destructive" });
     }
   };
 
@@ -303,7 +350,7 @@ export default function ApplicantList() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         {applicant.status === "pending" && (
                           <>
                             <Button
@@ -348,6 +395,17 @@ export default function ApplicantList() {
                         >
                           <MessageSquare className="h-3.5 w-3.5" />
                           <span className="text-[10px] uppercase font-bold hidden xl:inline">Lulus</span>
+                        </Button>
+
+                        {/* Delete Button */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          title="Hapus Peserta"
+                          className="text-red-600 border-red-200 hover:bg-red-50 h-8 w-8 p-0"
+                          onClick={() => handleDelete(applicant)}
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
 
                         {applicant.status !== "pending" && (
