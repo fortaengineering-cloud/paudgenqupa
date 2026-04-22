@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { logout } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogOut, FileText, Image, Megaphone, Users, ShieldCheck, Home, Settings, ClipboardList, Palette, Landmark } from "lucide-react";
+import { LogOut, FileText, Image, Megaphone, Users, Home, Settings, ClipboardList, Palette, Landmark } from "lucide-react";
 import ContentManager from "@/components/admin/ContentManager";
 import GalleryManager from "@/components/admin/GalleryManager";
 import BannerManager from "@/components/admin/BannerManager";
