@@ -15,6 +15,7 @@ import PaymentManager from "@/components/admin/PaymentManager";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import LogoMark from "@/components/LogoMark";
 
 export default function AdminPage() {
   const { user, isAdminUser, loading } = useAuth();
@@ -57,9 +58,7 @@ export default function AdminPage() {
       <header className="bg-background/80 backdrop-blur-md border-b sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link to="/admin" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full gradient-islamic flex items-center justify-center">
-              <ShieldCheck className="h-4 w-4 text-white" />
-            </div>
+            <LogoMark className="w-10 h-10" imageClassName="w-10 h-10" src="/logo.png" />
             <div>
               <span className="font-bold text-foreground">Dashboard</span>
               <span className="font-bold text-primary"> Admin</span>
