@@ -62,10 +62,10 @@ export default function ContactFooter() {
               </div>
             </div>
 
-            {/* Google Maps Iframe */}
+            {/* Google Maps Iframe dengan Koordinat Baru */}
             <div className="rounded-xl overflow-hidden shadow-lg bg-muted min-h-[300px] md:min-h-[400px] w-full relative">
               <iframe 
-                src="https://maps.google.com/maps?q=Rumah%20Tahfizh%20GenQuPa,%20Pandeglang&t=&z=15&ie=UTF8&iwloc=&output=embed" 
+                src="https://maps.google.com/maps?q=-6.323072485921823,106.07837428105698&hl=id&z=17&amp;output=embed" 
                 width="100%" 
                 height="100%" 
                 style={{ border: 0, position: "absolute", top: 0, left: 0 }} 
@@ -120,7 +120,7 @@ export default function ContactFooter() {
                 Yayasan Pendidikan Generasi Qurani Pandeglang
               </p>
               <p className="text-primary-foreground/70 text-sm mt-2 leading-relaxed">
-                Perumahan Mutiara NIMS Blok A14
+                Perumahan Mutiara NIMS Blok B6
                 <br />
                 Saruni, Majasari
                 <br />

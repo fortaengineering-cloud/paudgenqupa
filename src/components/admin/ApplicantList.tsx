@@ -496,7 +496,7 @@ export default function ApplicantList() {
                         </div>
                       </TableCell>
                       
-                      {/* KOLOM: TTL (Tanggal di atas, Tempat di bawah - Jarak dirapikan) */}
+                      {/* KOLOM: TTL */}
                       <TableCell className="whitespace-nowrap">
                         <div className="leading-tight">
                           <p className="text-sm font-medium text-gray-900">
@@ -510,7 +510,7 @@ export default function ApplicantList() {
                         </div>
                       </TableCell>
 
-                      {/* KOLOM: ORANG TUA (Ayah di atas, Ibu di bawah - Jarak dirapikan sejajar TTL) */}
+                      {/* KOLOM: ORANG TUA */}
                       <TableCell className="whitespace-nowrap">
                         {(() => {
                           const ayah = applicant.metadata?.namaAyah;
@@ -581,9 +581,30 @@ export default function ApplicantList() {
                             <Wallet className="h-4 w-4" />
                           </Button>
 
+                          {/* AREA LOGIKA PROTEKSI TOMBOL VERIFIKASI */}
                           {applicant.status === "pending" && (
                             <>
-                              <Button size="sm" variant="outline" title="Verifikasi" className="text-primary border-primary/30 hover:bg-primary/10 h-8 w-8 p-0 shrink-0" onClick={() => updateStatus(applicant.id, "verified")}>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                title={isPaymentVerified ? "Verifikasi Pendaftar" : "Tidak bisa diverifikasi: Pembayaran belum selesai/dikonfirmasi"} 
+                                className={`h-8 w-8 p-0 shrink-0 transition-all ${
+                                  isPaymentVerified 
+                                    ? "text-primary border-primary/30 hover:bg-primary/10" 
+                                    : "text-gray-300 border-gray-200 opacity-60 cursor-not-allowed bg-gray-50"
+                                }`} 
+                                onClick={() => {
+                                  if (!isPaymentVerified) {
+                                    toast({ 
+                                      title: "Akses Ditolak", 
+                                      description: "Pastikan pembayaran (ikon dompet) sudah diinput & dikonfirmasi (hijau) sebelum memverifikasi pendaftar.", 
+                                      variant: "destructive" 
+                                    });
+                                    return;
+                                  }
+                                  updateStatus(applicant.id, "verified");
+                                }}
+                              >
                                 <CheckCircle className="h-4 w-4" />
                               </Button>
                               <Button size="sm" variant="outline" title="Tolak" className="text-destructive border-destructive/30 hover:bg-destructive/10 h-8 w-8 p-0 shrink-0" onClick={() => updateStatus(applicant.id, "rejected")}>
