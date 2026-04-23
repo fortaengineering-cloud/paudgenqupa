@@ -5,6 +5,7 @@ import VisionMissionSection from "@/components/landing/VisionMissionSection";
 import ProgramSection from "@/components/landing/ProgramSection";
 import GallerySection from "@/components/landing/GallerySection";
 import ContactFooter from "@/components/landing/ContactFooter";
+import FloatingWAButton from "@/components/FloatingWAButton";
 
 const Index = () => {
   return (
@@ -18,6 +19,7 @@ const Index = () => {
         <GallerySection />
         <ContactFooter />
       </main>
+      <FloatingWAButton />
     </div>
   );
 };

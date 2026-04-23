@@ -33,8 +33,8 @@ export default function ContactFooter() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground">Telepon / WhatsApp</h3>
-                  <a href="https://wa.me/6281214177714" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors mt-1 inline-block">
-                    +62 812-1417-7714
+                  <a href="https://wa.me/6281214177741" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors mt-1 inline-block">
+                    +62 812-1417-7741
                   </a>
                 </div>
               </div>

@@ -79,6 +79,12 @@ export default function HeroSection() {
                   Daftar Sekarang
                 </Button>
               </Link>
+
+              <a href="https://wa.me/6281214177741" target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
+                <Button size="lg" variant="outline" className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 font-semibold text-base px-8 shadow-lg transition-all w-full sm:w-auto">
+                  Tanya Info (WA)
+                </Button>
+              </a>
               
               {user ? (
                 <Link to={isAdminUser ? "/admin" : "/dashboard"}>
