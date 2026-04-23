@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { useReactToPrint } from "react-to-print";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,8 +10,9 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Search, CheckCircle, XCircle, Clock, Users, Download, MessageSquare, Trash2, Edit, ExternalLink, FileText, Wallet, UploadCloud } from "lucide-react";
+import { Search, CheckCircle, XCircle, Clock, Users, Download, MessageSquare, Trash2, Edit, ExternalLink, FileText, Wallet, UploadCloud, Printer } from "lucide-react";
 import { logActivity } from "@/lib/logger";
+import StudentProfilePrint from "./StudentProfilePrint";
 
 interface Applicant {
   id: string;
@@ -43,6 +45,15 @@ const DEFAULT_SETTINGS = {
   wa_template_penerimaan: "Assalamu'alaikum Ayah/Bunda [NAMA_ORTU], ✨\n\nAlhamdulillah, ananda [NAMA_ANAK] dinyatakan LULUS dalam seleksi penerimaan siswa baru PAUD GenQuPa. 🏫🎊\n\nSilakan datang ke sekolah untuk proses daftar ulang. Selamat! 📱🤩",
 };
 
+// --- FUNGSI MENGHITUNG USIA ---
+const getAgeStr = (dateString: string | null) => {
+  if (!dateString) return "";
+  const birthDate = new Date(dateString);
+  const today = new Date();
+  const ageInYears = (today.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+  return `${Math.max(0, ageInYears).toFixed(1).replace('.', ',')} Tahun`;
+};
+
 export default function ApplicantList() {
   const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [search, setSearch] = useState("");
@@ -50,17 +61,29 @@ export default function ApplicantList() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  // STATE UNTUK MODAL EDIT LENGKAP
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string>("");
   const [savingEdit, setSavingEdit] = useState(false);
   const [editData, setEditData] = useState<any>({});
 
-  // STATE UNTUK INPUT PEMBAYARAN MANUAL (WA)
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
   const [isSubmittingPay, setIsSubmittingPay] = useState(false);
   const [payData, setPayData] = useState({ childId: "", childName: "", amount: "200000", note: "Konfirmasi via WhatsApp" });
   const [payFile, setPayFile] = useState<File | null>(null);
+
+  const [printData, setPrintData] = useState<any>(null);
+  const componentRef = useRef<HTMLDivElement>(null);
+  const handlePrint = useReactToPrint({
+    contentRef: componentRef,
+    documentTitle: `Profil_Murid_${printData?.full_name || 'GenQuPa'}`,
+  });
+
+  const triggerPrint = (data: any) => {
+    setPrintData(data);
+    setTimeout(() => {
+      handlePrint();
+    }, 500);
+  };
 
   useEffect(() => {
     fetchApplicants();
@@ -74,7 +97,6 @@ export default function ApplicantList() {
     return cleaned;
   };
 
-  // --- PERBAIKAN: Menambahkan Update ke Database Setelah Klik WA ---
   const sendWAMessage = async (applicant: any, type: "tagihan" | "penerimaan") => {
     const saved = localStorage.getItem("appSettings");
     const settings = saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
@@ -110,11 +132,9 @@ export default function ApplicantList() {
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodedMessage}`;
     
-    // Buka Tab WA
     window.open(whatsappUrl, "_blank");
     logActivity(`Kirim WhatsApp`, `Mengirim pesan ${type} ke ${parentNameCombined}`);
 
-    // Update Status di Database agar tombol menjadi Hijau
     try {
       const currentMetadata = applicant.metadata || {};
       const updatedMetadata = {
@@ -129,7 +149,6 @@ export default function ApplicantList() {
 
       if (error) throw error;
       
-      // Refresh Data agar warna tombol berubah otomatis
       fetchApplicants();
     } catch (err) {
       console.error("Gagal update status pengiriman WA:", err);
@@ -193,7 +212,6 @@ export default function ApplicantList() {
     }
   };
 
-  // --- FUNGSI BUKA MODAL BAYAR MANUAL ---
   const handleOpenPayModal = (app: Applicant) => {
     setPayData({ childId: app.id, childName: app.full_name, amount: "200000", note: "Konfirmasi via WhatsApp" });
     setPayFile(null);
@@ -356,13 +374,15 @@ export default function ApplicantList() {
 
   const exportToCSV = () => {
     const headers = [
-      "Nama Anak", "Jenis Kelamin", "Tempat Lahir", "Tanggal Lahir", "Anak Ke", "Status",
+      "Nama Anak", "Jenis Kelamin", "Usia", "Tempat Lahir", "Tanggal Lahir", "Kelas Tujuan", "Anak Ke", "Status",
       "Nama Ayah", "No Telp Ayah", "Nama Ibu", "No Telp Ibu", "Alamat"
     ];
     const rows = filtered.map(app => {
       const m = app.metadata || {};
+      const genderStr = app.gender === 'male' ? 'Laki-laki' : 'Perempuan';
+      const ageStr = app.birth_date ? getAgeStr(app.birth_date) : "-";
       const data = [
-        app.full_name, app.gender === 'male' ? 'Laki-laki' : 'Perempuan', app.birth_place, app.birth_date, app.child_order, app.status,
+        app.full_name, genderStr, ageStr, app.birth_place, app.birth_date, m.kelasTujuan || "", app.child_order, app.status,
         m.namaAyah || "", m.telpAyah || "", m.namaIbu || "", m.telpIbu || "", app.address || ""
       ];
       return data.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",");
@@ -398,6 +418,11 @@ export default function ApplicantList() {
 
   return (
     <div className="space-y-6">
+      {/* Komponen Print Tersembunyi */}
+      <div className="hidden">
+        {printData && <StudentProfilePrint ref={componentRef} data={printData} />}
+      </div>
+
       <div>
         <h2 className="text-xl font-bold text-foreground">Daftar Pendaftar</h2>
         <p className="text-sm text-muted-foreground">Kelola dan verifikasi pendaftaran siswa baru</p>
@@ -443,6 +468,7 @@ export default function ApplicantList() {
                   <TableHead className="whitespace-nowrap">TTL</TableHead>
                   <TableHead className="whitespace-nowrap">Orang Tua/Wali</TableHead>
                   <TableHead className="whitespace-nowrap">No. HP (WA)</TableHead>
+                  <TableHead className="whitespace-nowrap">Kelas Tujuan</TableHead>
                   <TableHead className="whitespace-nowrap">Status</TableHead>
                   <TableHead className="whitespace-nowrap min-w-[200px]">Aksi</TableHead>
                 </TableRow>
@@ -453,7 +479,6 @@ export default function ApplicantList() {
                   const hasPayment = paymentList.length > 0;
                   const isPaymentVerified = paymentList.some((p: any) => p.status === 'verified');
                   
-                  // STATUS TOMBOL WA DARI METADATA DATABASE
                   const isTagihanSent = applicant.metadata?.wa_tagihan_sent === true;
                   const isLulusSent = applicant.metadata?.wa_lulus_sent === true;
 
@@ -461,8 +486,11 @@ export default function ApplicantList() {
                     <TableRow key={applicant.id}>
                       <TableCell className="whitespace-nowrap">
                         <div>
-                          <p className="font-medium">{applicant.full_name}</p>
-                          <p className="text-xs text-muted-foreground">{applicant.gender === 'male' ? 'Laki-laki' : applicant.gender === 'female' ? 'Perempuan' : applicant.gender}</p>
+                          <p className="font-medium text-emerald-950">{applicant.full_name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {applicant.gender === 'male' ? 'Laki-laki' : applicant.gender === 'female' ? 'Perempuan' : applicant.gender}
+                            {applicant.birth_date ? `, ${getAgeStr(applicant.birth_date)}` : ''}
+                          </p>
                         </div>
                       </TableCell>
                       
@@ -489,6 +517,7 @@ export default function ApplicantList() {
                           return applicant.profiles?.name || "-";
                         })()}
                       </TableCell>
+                      
                       <TableCell className="whitespace-nowrap text-sm font-medium">
                         {(() => {
                           const phone = applicant.profiles?.phone || applicant.metadata?.telpAyah || applicant.metadata?.telpIbu;
@@ -501,13 +530,26 @@ export default function ApplicantList() {
                           );
                         })()}
                       </TableCell>
+
+                      {/* KOLOM BARU: KELAS TUJUAN */}
+                      <TableCell className="whitespace-nowrap">
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 uppercase text-[10px]">
+                          {applicant.metadata?.kelasTujuan || "-"}
+                        </Badge>
+                      </TableCell>
+
                       <TableCell className="whitespace-nowrap">
                         <Badge variant={statusConfig[applicant.status].variant}>
                           {statusConfig[applicant.status].label}
                         </Badge>
                       </TableCell>
+                      
                       <TableCell className="whitespace-nowrap">
                         <div className="flex items-center gap-1.5 flex-nowrap">
+                          <Button size="sm" variant="outline" title="Cetak Profil Murid" className="text-gray-700 border-gray-200 hover:bg-gray-100 h-8 w-8 p-0 shrink-0" onClick={() => triggerPrint(applicant)}>
+                            <Printer className="h-4 w-4" />
+                          </Button>
+
                           <Button size="sm" variant="outline" title="Detail & Edit Data" className="text-blue-600 border-blue-200 hover:bg-blue-50 h-8 w-8 p-0 shrink-0" onClick={() => handleEditClick(applicant)}>
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -539,7 +581,6 @@ export default function ApplicantList() {
                             </>
                           )}
                           
-                          {/* TOMBOL TAGIHAN DINAMIS */}
                           <Button 
                             size="sm" 
                             variant={isTagihanSent ? "default" : "outline"} 
@@ -555,7 +596,6 @@ export default function ApplicantList() {
                             <span className="text-[10px] uppercase font-bold">Tagihan</span>
                           </Button>
 
-                          {/* TOMBOL LULUS DINAMIS */}
                           <Button 
                             size="sm" 
                             variant={isLulusSent ? "default" : "outline"} 
@@ -581,7 +621,7 @@ export default function ApplicantList() {
                 })}
                 {filtered.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       {loading ? "Memuat data..." : "Belum ada pendaftar."}
                     </TableCell>
                   </TableRow>
@@ -613,7 +653,6 @@ export default function ApplicantList() {
                 <input type="number" className={inputClass} value={payData.amount} onChange={e => setPayData({...payData, amount: e.target.value})} placeholder="Contoh: 200000"/>
               </div>
               
-              {/* TOMBOL UPLOAD FILE BUKTI TF */}
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">BUKTI TRANSFER (OPSIONAL)</label>
                 <div className="flex items-center gap-2 w-full">
