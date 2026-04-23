@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import BannerCarousel from "@/components/dashboard/BannerCarousel";
-import { LogOut, Plus, Baby, Calendar, MapPin, User, Edit, Search, Users, Landmark } from "lucide-react";
+import { LogOut, Plus, Baby, Calendar, MapPin, User, Edit, Search, Users, Landmark, Printer } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import LogoMark from "@/components/LogoMark";
+import { useReactToPrint } from "react-to-print";
+import StudentProfilePrint from "@/components/admin/StudentProfilePrint";
 
 interface Child {
   id: string;
@@ -20,7 +22,7 @@ interface Child {
   child_order: number;
   address: string | null;
   status: "pending" | "verified" | "rejected";
-  metadata?: any; // <-- PERBAIKAN 1: Tambah tanda tanya (?) agar TypeScript tidak error
+  metadata?: any;
 }
 
 const statusConfig = {
@@ -36,13 +38,27 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
+  // STATE DAN FUNGSI UNTUK CETAK (Orang Tua)
+  const [printData, setPrintData] = useState<any>(null);
+  const componentRef = useRef<HTMLDivElement>(null);
+  const handlePrint = useReactToPrint({
+    contentRef: componentRef,
+    documentTitle: `Profil_Murid_${printData?.full_name || 'GenQuPa'}`,
+  });
+
+  const triggerPrint = (data: any) => {
+    setPrintData(data);
+    setTimeout(() => {
+      handlePrint();
+    }, 500);
+  };
+
   useEffect(() => {
     if (!loading && !user) {
       navigate("/login");
     }
   }, [user, loading, navigate]);
 
-  // <-- PERBAIKAN 2: Gunakan profile.id agar sinkron dengan relasi database
   useEffect(() => {
     if (profile?.id) {
       fetchChildren();
@@ -63,14 +79,12 @@ export default function DashboardPage() {
   const fetchPayments = async () => {
     if (!profile?.id) return;
     
-    // Coba dengan profile.id
     let { data } = await supabase
       .from("payments" as any)
       .select("*, children(full_name)")
       .eq("parent_id", profile.id)
       .order("created_at", { ascending: false });
 
-    // Fallback ke user.id jika tidak ditemukan
     if (!data || data.length === 0) {
       const authId = user?.id;
       if (authId && authId !== profile.id) {
@@ -91,7 +105,6 @@ export default function DashboardPage() {
     navigate("/");
   };
 
-  // FUNGSI UNTUK MENGIRIM DATA LAMA KE HALAMAN FORM (EDIT MODE)
   const handleEdit = (child: Child) => {
     localStorage.setItem('ppdbFormData', JSON.stringify(child.metadata || {}));
     localStorage.setItem('ppdbEditId', child.id);
@@ -168,6 +181,12 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      
+      {/* Komponen Print Tersembunyi */}
+      <div className="hidden">
+        {printData && <StudentProfilePrint ref={componentRef} data={printData} />}
+      </div>
+
       {/* Header */}
       <header className="bg-white border-b sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
@@ -197,7 +216,6 @@ export default function DashboardPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             {children.length === 0 ? (
-              // Jika belum ada data anak sama sekali
               <Button onClick={() => {
                 localStorage.removeItem('ppdbFormData');
                 localStorage.removeItem('ppdbFormStep');
@@ -209,7 +227,6 @@ export default function DashboardPage() {
                 <Plus className="h-4 w-4 mr-1" /> Tambah Data Anak
               </Button>
             ) : (
-              // Jika sudah ada data anak sebelumnya (Tawarkan opsi hemat waktu sebagai utama)
               <>
                 <Link to="/pembayaran">
                    <Button variant="outline" className="border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100 shadow-sm">
@@ -252,29 +269,30 @@ export default function DashboardPage() {
         )}
 
         {/* Daftar Anak */}
-        {filteredChildren.length === 0 ? (
+        {filteredChildren.length === 0 && children.length > 0 ? (
+           <div className="text-center py-10 bg-white rounded-xl border border-gray-100">
+             <Search className="mx-auto h-10 w-10 text-gray-300 mb-3" />
+             <h3 className="text-lg font-medium text-gray-900">Data tidak ditemukan</h3>
+             <p className="text-sm text-gray-500">Coba gunakan kata kunci lain.</p>
+           </div>
+        ) : children.length === 0 ? (
           <Card className="border-dashed bg-transparent shadow-none border-2 border-gray-200">
             <CardContent className="py-16 text-center">
               <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Baby className="h-8 w-8" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                {searchQuery ? "Data tidak ditemukan" : "Belum ada data pendaftaran"}
-              </h3>
-              <p className="text-sm text-gray-500 mb-6">
-                {searchQuery ? "Coba kata kunci lain." : "Klik tombol di atas untuk mulai mendaftarkan anak Anda."}
-              </p>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Belum ada data pendaftaran</h3>
+              <p className="text-sm text-gray-500 mb-6">Klik tombol di atas untuk mulai mendaftarkan anak Anda.</p>
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-6">
-            {/* RIWAYAT PEMBAYARAN - PENANGANAN PERMINTAAN USER */}
+            {/* RIWAYAT PEMBAYARAN */}
             {payments.length > 0 && (
               <Card className="border-emerald-100 shadow-sm overflow-hidden bg-white">
                 <CardHeader className="bg-emerald-50/50 py-4 border-b">
                   <CardTitle className="text-md flex items-center gap-2 text-emerald-900">
-                    <Landmark className="h-4 w-4" />
-                    Riwayat Konfirmasi Pembayaran
+                    <Landmark className="h-4 w-4" /> Riwayat Konfirmasi Pembayaran
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -298,7 +316,7 @@ export default function DashboardPage() {
                            {p.status === "pending" || !p.status ? (
                              <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200 text-[10px] uppercase font-bold py-0.5">Menunggu</Badge>
                            ) : p.status === "verified" ? (
-                             <Badge className="bg-emerald-600 text-white border-none shadow-sm text-[10px] uppercase font-bold py-0.5">Validated</Badge>
+                             <Badge className="bg-emerald-600 text-white border-none shadow-sm text-[10px] uppercase font-bold py-0.5">Divalidasi</Badge>
                            ) : (
                              <Badge variant="destructive" className="text-[10px] uppercase font-bold py-0.5">Ditolak</Badge>
                            )}
@@ -310,9 +328,10 @@ export default function DashboardPage() {
               </Card>
             )}
 
+            {/* KARTU ANAK */}
             <div className="grid sm:grid-cols-2 gap-4">
               {filteredChildren.map((child) => (
-                <Card key={child.id} className="hover:shadow-md transition-all border-gray-100 overflow-hidden">
+                <Card key={child.id} className="hover:shadow-md transition-all border-gray-100 overflow-hidden flex flex-col">
                   <div className={`h-2 w-full ${child.status === 'pending' ? 'bg-orange-400' : child.status === 'rejected' ? 'bg-red-500' : 'bg-emerald-500'}`}></div>
                   <CardHeader className="pb-3 bg-white">
                   <div className="flex flex-col gap-2">
@@ -320,35 +339,45 @@ export default function DashboardPage() {
                       <CardTitle className="text-lg text-gray-800">{child.full_name}</CardTitle>
                       <Badge variant={statusConfig[child.status].variant}>{statusConfig[child.status].label}</Badge>
                     </div>
-                    {/* TOMBOL EDIT DATA (Hanya untuk yang statusnya pending) */}
-                    {child.status === 'pending' && (
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(child)} className="w-fit text-emerald-700 border-emerald-200 hover:bg-emerald-50 h-8 mt-1">
-                        <Edit className="h-3.5 w-3.5 mr-1" /> Edit Formulir
+                    
+                    {/* AREA TOMBOL AKSI */}
+                    <div className="flex gap-2 flex-wrap mt-1">
+                      {/* Tombol Print (Selalu Ada) */}
+                      <Button variant="outline" size="sm" onClick={() => triggerPrint(child)} className="text-gray-700 border-gray-300 hover:bg-gray-100 h-8">
+                        <Printer className="h-3.5 w-3.5 mr-1" /> Cetak Profil
                       </Button>
-                    )}
+
+                      {/* Tombol Edit Data (Hanya untuk yang statusnya pending) */}
+                      {child.status === 'pending' && (
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(child)} className="text-emerald-700 border-emerald-200 hover:bg-emerald-50 h-8">
+                          <Edit className="h-3.5 w-3.5 mr-1" /> Edit Formulir
+                        </Button>
+                      )}
+                    </div>
+
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-3 pt-4 text-sm text-gray-600 bg-gray-50/50">
+                <CardContent className="space-y-3 pt-4 text-sm text-gray-600 bg-gray-50/50 flex-grow">
                   <div className="flex items-center gap-3">
                     <div className="p-1.5 bg-white rounded-md border border-gray-100 shadow-sm"><User className="h-4 w-4 text-emerald-600" /></div>
-                    <span>{child.gender || "-"} — Anak ke-{child.child_order || "-"}</span>
+                    <span>{child.gender === 'male' ? 'Laki-laki' : child.gender === 'female' ? 'Perempuan' : child.gender || "-"} — Anak ke-{child.child_order || "-"}</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="p-1.5 bg-white rounded-md border border-gray-100 shadow-sm"><Calendar className="h-4 w-4 text-emerald-600" /></div>
                     <span>{child.birth_place || "-"}, {child.birth_date ? new Date(child.birth_date).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "-"}</span>
                   </div>
                   {child.address && (
-                    <div className="flex items-center gap-3">
-                      <div className="p-1.5 bg-white rounded-md border border-gray-100 shadow-sm"><MapPin className="h-4 w-4 text-emerald-600" /></div>
-                      <span className="line-clamp-1">{child.address}</span>
+                    <div className="flex items-start gap-3">
+                      <div className="p-1.5 bg-white rounded-md border border-gray-100 shadow-sm mt-0.5"><MapPin className="h-4 w-4 text-emerald-600" /></div>
+                      <span className="line-clamp-2 leading-relaxed">{child.address}</span>
                     </div>
                   )}
                 </CardContent>
               </Card>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
       </div>
     </div>
   );

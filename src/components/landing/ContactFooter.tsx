@@ -19,7 +19,11 @@ export default function ContactFooter() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground">Alamat</h3>
-                  <p className="text-muted-foreground">Perumahan Mutiara NIMS Blok B6, Pandeglang, Banten</p>
+                  <p className="text-muted-foreground leading-relaxed mt-1">
+                    Perumahan Mutiara NIMS Blok A14,<br/>
+                    Saruni, Kec. Majasari,<br/>
+                    Kabupaten Pandeglang, Banten 17531
+                  </p>
                 </div>
               </div>
 
@@ -29,7 +33,9 @@ export default function ContactFooter() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground">Telepon / WhatsApp</h3>
-                  <p className="text-muted-foreground">Hubungi kami untuk informasi lebih lanjut</p>
+                  <a href="https://wa.me/6281214177741" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors mt-1 inline-block">
+                    +62 812-1417-7741
+                  </a>
                 </div>
               </div>
 
@@ -39,7 +45,9 @@ export default function ContactFooter() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground">Email</h3>
-                  <p className="text-muted-foreground">info@paud.genqupa.co.id</p>
+                  <a href="mailto:info@paud.genqupa.co.id" className="text-muted-foreground hover:text-primary transition-colors mt-1 inline-block">
+                    info@paud.genqupa.co.id
+                  </a>
                 </div>
               </div>
 
@@ -49,20 +57,23 @@ export default function ContactFooter() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground">Jam Operasional</h3>
-                  <p className="text-muted-foreground">Senin - Jumat: 07:30 - 12:00 WIB</p>
+                  <p className="text-muted-foreground mt-1">Senin - Jumat: 07:30 - 12:00 WIB</p>
                 </div>
               </div>
             </div>
 
-            {/* Map Placeholder */}
-            <div className="rounded-xl overflow-hidden shadow-lg bg-muted min-h-[300px] flex items-center justify-center">
-              <div className="text-center p-8">
-                <MapPin className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-muted-foreground font-medium">Peta Lokasi</p>
-                <p className="text-sm text-muted-foreground/70 mt-1">
-                  Perumahan Mutiara NIMS Blok B6, Pandeglang
-                </p>
-              </div>
+            {/* Google Maps Iframe */}
+            <div className="rounded-xl overflow-hidden shadow-lg bg-muted min-h-[300px] md:min-h-[400px] w-full relative">
+              <iframe 
+                src="https://maps.google.com/maps?q=Rumah%20Tahfizh%20GenQuPa,%20Pandeglang&t=&z=15&ie=UTF8&iwloc=&output=embed" 
+                width="100%" 
+                height="100%" 
+                style={{ border: 0, position: "absolute", top: 0, left: 0 }} 
+                allowFullScreen={false} 
+                loading="lazy" 
+                referrerPolicy="no-referrer-when-downgrade"
+                title="Peta Lokasi PAUD Tunas GenQuPa"
+              ></iframe>
             </div>
           </div>
         </div>
@@ -108,10 +119,12 @@ export default function ContactFooter() {
               <p className="text-primary-foreground/70 text-sm">
                 Yayasan Pendidikan Generasi Qurani Pandeglang
               </p>
-              <p className="text-primary-foreground/70 text-sm mt-2">
-                Perumahan Mutiara NIMS Blok B6
+              <p className="text-primary-foreground/70 text-sm mt-2 leading-relaxed">
+                Perumahan Mutiara NIMS Blok A14
                 <br />
-                Pandeglang, Banten
+                Saruni, Majasari
+                <br />
+                Pandeglang, Banten 17531
               </p>
             </div>
           </div>
