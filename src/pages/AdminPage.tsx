@@ -12,6 +12,8 @@ import ApplicantList from "@/components/admin/ApplicantList";
 import AdminLogList from "@/components/admin/AdminLogList";
 import AppSettings from "@/components/admin/AppSettings";
 import PaymentManager from "@/components/admin/PaymentManager";
+import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -42,6 +44,42 @@ export default function AdminPage() {
   const handleLogout = async () => {
     await logout();
     navigate("/");
+  };
+
+  const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
+
+  useEffect(() => {
+    if (isAdminUser) {
+      fetchPendingPaymentsCount();
+      
+      const channel = supabase
+        .channel('admin-payment-notifications')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'payments' },
+          () => fetchPendingPaymentsCount()
+        )
+        .subscribe();
+        
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [isAdminUser]);
+
+  const fetchPendingPaymentsCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('payments' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+        
+      if (!error && count !== null) {
+        setPendingPaymentsCount(count);
+      }
+    } catch (err) {
+      console.error("Error fetching pending payments count:", err);
+    }
   };
 
   if (loading || !user || !isAdminUser) {
@@ -109,9 +147,14 @@ export default function AdminPage() {
               <Users className="h-4 w-4" />
               <span>Pendaftar</span>
             </TabsTrigger>
-            <TabsTrigger value="payments" className="gap-2 rounded-lg">
+            <TabsTrigger value="payments" className="gap-2 rounded-lg relative">
               <Landmark className="h-4 w-4" />
               <span>Pembayaran</span>
+              {pendingPaymentsCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] text-white font-bold animate-bounce shadow-lg border-2 border-white">
+                  {pendingPaymentsCount}
+                </span>
+              )}
             </TabsTrigger>
             <TabsTrigger value="content" className="gap-2 rounded-lg">
               <FileText className="h-4 w-4" />

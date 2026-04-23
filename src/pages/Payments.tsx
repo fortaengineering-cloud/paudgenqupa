@@ -195,34 +195,34 @@ export default function Payments() {
 
       // 3. Persiapkan Notifikasi WA ke Admin
       const childName = children.find(c => c.id === formData.child_id)?.full_name || "Ananda";
-      const waAdminMsg = `Assalamu'alaikum Admin, saya baru saja mengunggah bukti transfer untuk Ananda ${childName}. Mohon divalidasi ya. Terima kasih.`;
+      const waAdminMsg = `Assalamu'alaikum Admin, saya baru saja mengunggah bukti transfer untuk Ananda ${childName} (${formData.category}). Mohon divalidasi ya. Terima kasih.`;
       const encodedWa = encodeURIComponent(waAdminMsg);
       
-      // Default nomor WA Ustadz Ikhsan
+      // Default nomor WA Admin
       let adminPhone = "6281214177714"; 
 
-      // (Opsional) Mencoba mengambil nomor WA dari database pengaturan jika fitur admin sudah siap
       try {
         const { data } = await supabase.from('app_settings' as any).select('wa_admin').single();
-        const settings = data as any;
-        if (settings && settings.wa_admin) {
-          // Bersihkan karakter selain angka
-          let cleanDbPhone = settings.wa_admin.replace(/\D/g, "");
+        if (data && (data as any).wa_admin) {
+          let cleanDbPhone = (data as any).wa_admin.replace(/\D/g, "");
           if (cleanDbPhone.startsWith("0")) cleanDbPhone = "62" + cleanDbPhone.slice(1);
           adminPhone = cleanDbPhone;
         }
-      } catch (e) {
-        // Abaikan jika tabel app_settings belum dibuat, tetap pakai nomor default
-      }
+      } catch (e) {}
 
       const waUrl = `https://api.whatsapp.com/send?phone=${adminPhone}&text=${encodedWa}`;
 
+      // Mencoba membuka WA otomatis (mungkin diblokir browser, jadi tetap sedia tombol manual)
+      const waWindow = window.open(waUrl, "_blank");
+      
       toast({ 
-        title: "Berhasil!", 
-        description: "Konfirmasi pembayaran telah dikirim ke admin.",
+        title: "Pembayaran Terkirim!", 
+        description: waWindow 
+          ? "Data disimpan & WhatsApp admin telah dibuka otomatis." 
+          : "Data disimpan. Mohon klik tombol di samping untuk kirim WA ke admin.",
         action: (
-          <Button size="sm" variant="outline" className="bg-emerald-600 text-white hover:bg-emerald-700 border-none h-8" onClick={() => window.open(waUrl, "_blank")}>
-            Hubungi Admin
+          <Button size="sm" variant="outline" className="bg-emerald-600 text-white hover:bg-emerald-700 border-none h-8 shadow-md" onClick={() => window.open(waUrl, "_blank")}>
+            Kirim WhatsApp
           </Button>
         )
       });

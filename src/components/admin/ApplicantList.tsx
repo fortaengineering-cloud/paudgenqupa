@@ -10,7 +10,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Search, CheckCircle, XCircle, Clock, Users, Download, MessageSquare, Trash2, Edit, ExternalLink, FileText, Wallet, UploadCloud, Printer } from "lucide-react";
+import { Search, CheckCircle, XCircle, Clock, Users, Download, MessageSquare, Trash2, Edit, ExternalLink, FileText, Wallet, UploadCloud, Printer, GraduationCap } from "lucide-react";
 import { logActivity } from "@/lib/logger";
 import StudentProfilePrint from "./StudentProfilePrint";
 
@@ -158,7 +158,7 @@ export default function ApplicantList() {
   const fetchApplicants = async () => {
     const { data, error } = await supabase
       .from("children" as any)
-      .select("*, profiles!children_parent_id_fkey(name, phone, address), payments(id, status)")
+      .select("*, profiles!children_parent_id_fkey(name, phone, address), payments(id, status, amount)")
       .order("created_at", { ascending: false });
 
     if (data) setApplicants(data as unknown as Applicant[]);
@@ -412,6 +412,12 @@ export default function ApplicantList() {
     pending: applicants.filter((a) => a.status === "pending").length,
     verified: applicants.filter((a) => a.status === "verified").length,
     rejected: applicants.filter((a) => a.status === "rejected").length,
+    tka: applicants.filter((a) => a.metadata?.kelasTujuan === "TK A").length,
+    tkb: applicants.filter((a) => a.metadata?.kelasTujuan === "TK B").length,
+    totalIncome: applicants.reduce((sum, app) => {
+      const verifiedPayments = (app.payments || []).filter((p: any) => p.status === 'verified');
+      return sum + verifiedPayments.reduce((pSum: number, p: any) => pSum + (p.amount || 0), 0);
+    }, 0),
   };
 
   const inputClass = "w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white";
@@ -433,10 +439,13 @@ export default function ApplicantList() {
       </Button>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
         <Card><CardContent className="p-4 flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center"><Users className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-bold">{counts.total}</p><p className="text-xs text-muted-foreground">Total</p></div></CardContent></Card>
+        <Card><CardContent className="p-4 flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center"><GraduationCap className="h-5 w-5 text-blue-600" /></div><div><p className="text-2xl font-bold">{counts.tka}</p><p className="text-xs text-muted-foreground">TK-A</p></div></CardContent></Card>
+        <Card><CardContent className="p-4 flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center"><GraduationCap className="h-5 w-5 text-purple-600" /></div><div><p className="text-2xl font-bold">{counts.tkb}</p><p className="text-xs text-muted-foreground">TK-B</p></div></CardContent></Card>
+        <Card><CardContent className="p-4 flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center"><Wallet className="h-5 w-5 text-emerald-600" /></div><div><p className="text-lg font-bold">Rp {counts.totalIncome.toLocaleString()}</p><p className="text-xs text-muted-foreground">Total Dana</p></div></CardContent></Card>
         <Card><CardContent className="p-4 flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center"><Clock className="h-5 w-5 text-secondary" /></div><div><p className="text-2xl font-bold">{counts.pending}</p><p className="text-xs text-muted-foreground">Menunggu</p></div></CardContent></Card>
-        <Card><CardContent className="p-4 flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center"><CheckCircle className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-bold">{counts.verified}</p><p className="text-xs text-muted-foreground">Terverifikasi</p></div></CardContent></Card>
+        <Card><CardContent className="p-4 flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center"><CheckCircle className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-bold">{counts.verified}</p><p className="text-xs text-muted-foreground">Verifikasi</p></div></CardContent></Card>
         <Card><CardContent className="p-4 flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center"><XCircle className="h-5 w-5 text-destructive" /></div><div><p className="text-2xl font-bold">{counts.rejected}</p><p className="text-xs text-muted-foreground">Ditolak</p></div></CardContent></Card>
       </div>
 
