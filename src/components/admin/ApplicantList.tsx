@@ -484,40 +484,51 @@ export default function ApplicantList() {
 
                   return (
                     <TableRow key={applicant.id}>
+                      
+                      {/* KOLOM: NAMA ANAK */}
                       <TableCell className="whitespace-nowrap">
-                        <div>
-                          <p className="font-medium text-emerald-950">{applicant.full_name}</p>
-                          <p className="text-xs text-muted-foreground">
+                        <div className="leading-tight">
+                          <p className="text-sm font-medium text-emerald-950">{applicant.full_name}</p>
+                          <p className="text-[11px] text-muted-foreground mt-1">
                             {applicant.gender === 'male' ? 'Laki-laki' : applicant.gender === 'female' ? 'Perempuan' : applicant.gender}
                             {applicant.birth_date ? `, ${getAgeStr(applicant.birth_date)}` : ''}
                           </p>
                         </div>
                       </TableCell>
                       
+                      {/* KOLOM: TTL (Tanggal di atas, Tempat di bawah - Jarak dirapikan) */}
                       <TableCell className="whitespace-nowrap">
-                        <div className="flex flex-col">
-                          <span className="text-[11px] text-gray-500">
-                            {applicant.birth_place || "-"}
-                          </span>
-                          <span className="text-sm font-medium text-gray-900">
+                        <div className="leading-tight">
+                          <p className="text-sm font-medium text-gray-900">
                             {applicant.birth_date 
                               ? new Date(applicant.birth_date).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' }) 
                               : "-"}
-                          </span>
+                          </p>
+                          <p className="text-[11px] text-gray-500 mt-1">
+                            {applicant.birth_place || "-"}
+                          </p>
                         </div>
                       </TableCell>
 
-                      <TableCell className="whitespace-nowrap text-sm">
+                      {/* KOLOM: ORANG TUA (Ayah di atas, Ibu di bawah - Jarak dirapikan sejajar TTL) */}
+                      <TableCell className="whitespace-nowrap">
                         {(() => {
                           const ayah = applicant.metadata?.namaAyah;
                           const ibu = applicant.metadata?.namaIbu;
-                          if (ayah && ibu) return `${ayah} / ${ibu}`;
-                          if (ayah) return ayah;
-                          if (ibu) return ibu;
-                          return applicant.profiles?.name || "-";
+                          
+                          if (ayah || ibu) {
+                            return (
+                              <div className="leading-tight">
+                                {ayah && <p className="text-sm font-medium text-gray-900">{ayah} {ibu ? " /" : ""}</p>}
+                                {ibu && <p className="text-[11px] text-gray-500 mt-1">{ibu}</p>}
+                              </div>
+                            );
+                          }
+                          return <span className="text-sm text-gray-500">{applicant.profiles?.name || "-"}</span>;
                         })()}
                       </TableCell>
                       
+                      {/* KOLOM: NO HP (WA) */}
                       <TableCell className="whitespace-nowrap text-sm font-medium">
                         {(() => {
                           const phone = applicant.profiles?.phone || applicant.metadata?.telpAyah || applicant.metadata?.telpIbu;
@@ -531,7 +542,7 @@ export default function ApplicantList() {
                         })()}
                       </TableCell>
 
-                      {/* KOLOM BARU: KELAS TUJUAN */}
+                      {/* KOLOM: KELAS TUJUAN */}
                       <TableCell className="whitespace-nowrap">
                         <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 uppercase text-[10px]">
                           {applicant.metadata?.kelasTujuan || "-"}
