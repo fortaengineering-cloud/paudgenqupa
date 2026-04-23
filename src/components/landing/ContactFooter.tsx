@@ -71,7 +71,7 @@ export default function ContactFooter() {
             {/* Google Maps Iframe dengan Format Resmi HTTPS */}
             <div className="rounded-xl overflow-hidden shadow-lg bg-muted min-h-[300px] md:min-h-[400px] w-full relative">
               <iframe 
-                src="https://maps.google.com/maps?q=-6.323072485921823,106.07837428105698&hl=id&z=17&output=embed" 
+                src="https://maps.google.com/maps?q=-6.323072485921823,106.07837428105698&t=&z=17&ie=UTF8&iwloc=&output=embed" 
                 width="100%" 
                 height="100%" 
                 className="absolute inset-0 w-full h-full"
