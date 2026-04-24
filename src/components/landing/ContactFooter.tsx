@@ -1,6 +1,9 @@
 import { MapPin, Mail, Clock, MessageSquare } from "lucide-react";
 
 export default function ContactFooter() {
+  const waMessage = "Assalamu'alaikum, \n\nPerkenalkan saya:\nNama:\nDomisili:\n\nSaya ingin bertanya lebih lanjut mengenai pendaftaran di PAUD GenQuPa. Jazaakumullaahu khayran.";
+  const waLink = `https://wa.me/6281214177741?text=${encodeURIComponent(waMessage)}`;
+
   return (
     <>
       <section id="kontak" className="py-20 bg-background">
@@ -29,7 +32,7 @@ export default function ContactFooter() {
 
               <div className="flex items-start gap-4">
                 <a 
-                  href="https://wa.me/6281214177741" 
+                  href={waLink} 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center flex-shrink-0 hover:bg-emerald-50 hover:scale-110 transition-all group"
@@ -39,7 +42,7 @@ export default function ContactFooter() {
                 </a>
                 <div>
                   <h3 className="font-semibold text-foreground">Telepon / WhatsApp</h3>
-                  <a href="https://wa.me/6281214177741" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors mt-1 inline-block">
+                  <a href={waLink} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors mt-1 inline-block">
                     +62 812-1417-7741
                   </a>
                 </div>
@@ -68,7 +71,7 @@ export default function ContactFooter() {
               </div>
             </div>
 
-            {/* Google Maps Iframe dengan Format Resmi HTTPS */}
+            {/* Google Maps Iframe */}
             <div className="rounded-xl overflow-hidden shadow-lg bg-muted min-h-[300px] md:min-h-[400px] w-full relative">
               <iframe 
                 src="https://maps.google.com/maps?q=-6.323072485921823,106.07837428105698&t=&z=17&ie=UTF8&iwloc=&output=embed" 
