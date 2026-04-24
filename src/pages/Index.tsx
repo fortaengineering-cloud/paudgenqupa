@@ -6,6 +6,7 @@ import ProgramSection from "@/components/landing/ProgramSection";
 import GallerySection from "@/components/landing/GallerySection";
 import ContactFooter from "@/components/landing/ContactFooter";
 import FloatingWAButton from "@/components/FloatingWAButton";
+import UpdateAppButton from "@/components/UpdateAppButton";
 
 const Index = () => {
   return (
@@ -20,6 +21,7 @@ const Index = () => {
         <ContactFooter />
       </main>
       <FloatingWAButton />
+      <UpdateAppButton />
     </div>
   );
 };
