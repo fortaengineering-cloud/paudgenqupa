@@ -40,8 +40,8 @@ const statusConfig = {
 };
 
 const DEFAULT_SETTINGS = {
-  bank_info: "BSI - 7149021832 a.n Yayasan Generasi Qurani Pandeglang",
-  wa_template_tagihan: "Assalamu'alaikum Ayah/Bunda [NAMA_ORTU], ✨\n\nAlhamdulillah, pendaftaran online ananda [NAMA_ANAK] telah berhasil masuk ke sistem PPDB PAUD Tunas GenQuPa. 🏫\n\nInformasi pembayaran biaya pendaftaran pendaftaran:\n💳 [BANK_INFO]\n\nMohon konfirmasi dengan mengunggah bukti transfer di aplikasi. Terima kasih! 🧾✅",
+  bank_info: "BSI - 7148785443 a.n Ayi Jabaruti",
+  wa_template_tagihan: "Assalamu'alaikum Ayah/Bunda [NAMA_AYAH] / [NAMA_IBU], ✨\n\nAlhamdulillah, pendaftaran online ananda [NAMA_ANAK] telah berhasil masuk ke sistem PPDB PAUD Tunas GenQuPa. 🏫\n\nUntuk melanjutkan proses pendaftaran ke tahap berikutnya, mohon berkenan menyelesaikan biaya pendaftaran sebesar Rp 200.000,-. Pembayaran dapat dilakukan secara tunai (cash) atau melalui transfer ke rekening berikut:\n\n💳 [BANK_INFO]\n\nBagi Ayah/Bunda yang melakukan pembayaran via transfer, mohon untuk segera mengonfirmasi dengan mengunggah bukti transfer di aplikasi, atau membalas pesan WA ini agar data dapat segera kami verifikasi. 🧾✅\n\nPengumuman selanjutnya terkait alur PPDB akan kami infokan melalui pesan WA dan juga dapat dipantau langsung di aplikasi. 📱\n\nTerima kasih atas kepercayaannya memilih PAUD Tunas GenQuPa. Semoga Allah Ta'ala meridhai dan senantiasa memberikan kemudahan bagi kita semua. 🤲\n\nJazaakumullaahu khayran wa baarakallahu fiikum.\nPanitia PPDB PAUD Tunas GenQuPa 🌿",
   wa_template_penerimaan: "Assalamu'alaikum Ayah/Bunda [NAMA_ORTU], ✨\n\nAlhamdulillah, ananda [NAMA_ANAK] dinyatakan LULUS dalam seleksi penerimaan siswa baru PAUD GenQuPa. 🏫🎊\n\nSilakan datang ke sekolah untuk proses daftar ulang. Selamat! 📱🤩",
 };
 
@@ -98,8 +98,8 @@ export default function ApplicantList() {
   };
 
   const sendWAMessage = async (applicant: any, type: "tagihan" | "penerimaan") => {
-    const saved = localStorage.getItem("appSettings");
-    const settings = saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+    const { data: dbSettings } = await supabase.from('app_settings' as any).select('*').maybeSingle();
+    const settings = (dbSettings as any) || DEFAULT_SETTINGS;
     
     let rawPhone = applicant.profiles?.phone || applicant.metadata?.telpAyah || applicant.metadata?.telpIbu || "";
     if (!rawPhone) {

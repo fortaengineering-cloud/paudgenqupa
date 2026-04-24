@@ -10,8 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { logActivity } from "@/lib/logger";
 
 const DEFAULT_SETTINGS = {
-  bank_info: "BSI - 7149021832 a.n Yayasan Generasi Qurani Pandeglang",
-  wa_template_tagihan: "Assalamu'alaikum Ayah/Bunda [NAMA_ORTU], ✨\n\nAlhamdulillah, pendaftaran online ananda [NAMA_ANAK] telah berhasil masuk ke sistem PPDB PAUD Tunas GenQuPa. 🏫\n\nInformasi pembayaran biaya pendaftaran pendaftaran:\n💳 [BANK_INFO]\n\nMohon konfirmasi dengan mengunggah bukti transfer di aplikasi. Terima kasih! 🧾✅",
+  bank_info: "BSI - 7148785443 a.n Ayi Jabaruti",
+  wa_template_tagihan: "Assalamu'alaikum Ayah/Bunda [NAMA_AYAH] / [NAMA_IBU], ✨\n\nAlhamdulillah, pendaftaran online ananda [NAMA_ANAK] telah berhasil masuk ke sistem PPDB PAUD Tunas GenQuPa. 🏫\n\nUntuk melanjutkan proses pendaftaran ke tahap berikutnya, mohon berkenan menyelesaikan biaya pendaftaran sebesar Rp 200.000,-. Pembayaran dapat dilakukan secara tunai (cash) atau melalui transfer ke rekening berikut:\n\n💳 [BANK_INFO]\n\nBagi Ayah/Bunda yang melakukan pembayaran via transfer, mohon untuk segera mengonfirmasi dengan mengunggah bukti transfer di aplikasi, atau membalas pesan WA ini agar data dapat segera kami verifikasi. 🧾✅\n\nPengumuman selanjutnya terkait alur PPDB akan kami infokan melalui pesan WA dan juga dapat dipantau langsung di aplikasi. 📱\n\nTerima kasih atas kepercayaannya memilih PAUD Tunas GenQuPa. Semoga Allah Ta'ala meridhai dan senantiasa memberikan kemudahan bagi kita semua. 🤲\n\nJazaakumullaahu khayran wa baarakallahu fiikum.\nPanitia PPDB PAUD Tunas GenQuPa 🌿",
   wa_template_penerimaan: "Assalamu'alaikum Ayah/Bunda [NAMA_ORTU], ✨\n\nAlhamdulillah, ananda [NAMA_ANAK] dinyatakan LULUS dalam seleksi penerimaan siswa baru PAUD GenQuPa. 🏫🎊\n\nSilakan datang ke sekolah untuk proses daftar ulang. Selamat! 📱🤩",
 };
 
@@ -24,18 +24,67 @@ export default function AppSettings() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const saved = localStorage.getItem("appSettings");
-    if (saved) {
-      setSettings(JSON.parse(saved));
-    }
+    fetchSettings();
   }, []);
 
-  const handleSave = () => {
-    localStorage.setItem("appSettings", JSON.stringify(settings));
-    toast({
-      title: "Pengaturan Tersimpan",
-      description: "Data pengaturan WhatsApp dan Pembayaran telah diperbarui.",
-    });
+  const fetchSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('app_settings' as any)
+        .select('*')
+        .maybeSingle();
+        
+      if (error) throw error;
+      if (data) {
+        setSettings(data as any);
+      }
+    } catch (error: any) {
+      console.error("Error fetching settings:", error.message);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      // Check if row exists
+      const { data: existing } = await supabase
+        .from('app_settings' as any)
+        .select('id')
+        .maybeSingle();
+
+      const payload = {
+        bank_info: settings.bank_info,
+        wa_template_tagihan: settings.wa_template_tagihan,
+        wa_template_penerimaan: settings.wa_template_penerimaan,
+      };
+
+      let error;
+      if (existing) {
+        const result = await supabase
+          .from('app_settings' as any)
+          .update(payload)
+          .eq('id', (existing as any).id);
+        error = result.error;
+      } else {
+        const result = await supabase
+          .from('app_settings' as any)
+          .insert([payload]);
+        error = result.error;
+      }
+
+      if (error) throw error;
+
+      toast({
+        title: "Pengaturan Tersimpan",
+        description: "Data pengaturan WhatsApp dan Pembayaran telah diperbarui di database.",
+      });
+      logActivity("Pengaturan", "Memperbarui pengaturan sistem di database");
+    } catch (error: any) {
+      toast({
+        title: "Gagal Menyimpan",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
