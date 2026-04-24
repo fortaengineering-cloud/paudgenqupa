@@ -63,7 +63,7 @@ export default function AdminLoginPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@paud.genqupa.co.id"
+                  placeholder="Masukkan email admin"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
