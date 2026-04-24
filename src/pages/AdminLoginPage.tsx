@@ -28,7 +28,7 @@ export default function AdminLoginPage() {
     } catch (error: any) {
       toast({
         title: "Gagal masuk",
-        description: error.message || "Email atau password salah.",
+        description: "Email atau password yang Anda masukkan salah.",
         variant: "destructive",
       });
     } finally {
@@ -53,17 +53,17 @@ export default function AdminLoginPage() {
           <CardHeader className="text-center">
             <LogoMark className="mx-auto mb-2" />
             <CardTitle className="text-2xl">Login Admin</CardTitle>
-            <CardDescription>Akses khusus untuk pengelola PAUD GenQuPa</CardDescription>
+            <CardDescription>Akses khusus pengelola sistem</CardDescription>
           </CardHeader>
 
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email Admin</Label>
+                <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Masukkan email admin"
+                  placeholder="admin@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
