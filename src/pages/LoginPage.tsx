@@ -85,8 +85,26 @@ export default function LoginPage() {
           <CardHeader className="text-center">
             <LogoMark className="mx-auto mb-2" />
             <CardTitle className="text-2xl">Masuk</CardTitle>
-            <CardDescription>Login menggunakan nomor HP yang terdaftar</CardDescription>
+            <CardDescription>Pilih jenis akun untuk masuk</CardDescription>
           </CardHeader>
+
+          <div className="px-6 -mt-2 mb-4 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              className="rounded-lg border-2 border-primary bg-primary/5 p-3 text-center"
+              aria-pressed="true"
+            >
+              <div className="text-sm font-semibold text-primary">Orang Tua</div>
+              <div className="text-[11px] text-muted-foreground">Login dengan No. HP</div>
+            </button>
+            <Link
+              to="/admin/login"
+              className="rounded-lg border border-input bg-background p-3 text-center hover:bg-accent transition-colors"
+            >
+              <div className="text-sm font-semibold">Admin</div>
+              <div className="text-[11px] text-muted-foreground">Login dengan Email</div>
+            </Link>
+          </div>
 
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">

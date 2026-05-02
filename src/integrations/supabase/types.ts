@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          bank_info: string
+          created_at: string
+          id: string
+          updated_at: string
+          wa_template_penerimaan: string
+          wa_template_tagihan: string
+        }
+        Insert: {
+          bank_info: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          wa_template_penerimaan: string
+          wa_template_tagihan: string
+        }
+        Update: {
+          bank_info?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          wa_template_penerimaan?: string
+          wa_template_tagihan?: string
+        }
+        Relationships: []
+      }
       banners: {
         Row: {
           created_at: string
@@ -158,8 +185,10 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          notes: string | null
           parent_id: string | null
           proof_url: string
+          receipt_url: string | null
           status: string | null
         }
         Insert: {
@@ -169,8 +198,10 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          notes?: string | null
           parent_id?: string | null
           proof_url: string
+          receipt_url?: string | null
           status?: string | null
         }
         Update: {
@@ -180,8 +211,10 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          notes?: string | null
           parent_id?: string | null
           proof_url?: string
+          receipt_url?: string | null
           status?: string | null
         }
         Relationships: [
