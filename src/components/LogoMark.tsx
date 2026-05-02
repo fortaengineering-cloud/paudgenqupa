@@ -18,7 +18,7 @@ export default function LogoMark({
   return (
     <span
       className={cn(
-        "inline-flex w-16 h-16 items-center justify-center rounded-full bg-card shadow-sm ring-1 ring-border overflow-hidden shrink-0",
+        "inline-flex w-16 h-16 items-center justify-center shrink-0",
         className,
       )}
       aria-label="Logo PAUD Tunas GenQuPa"
@@ -29,7 +29,7 @@ export default function LogoMark({
         <img
           src={src}
           alt="Logo PAUD Tunas GenQuPa"
-          className={cn("w-16 h-16 object-contain", imageClassName)}
+          className={cn("w-full h-full object-contain", imageClassName)}
           onError={() => setHasError(true)}
         />
       )}
