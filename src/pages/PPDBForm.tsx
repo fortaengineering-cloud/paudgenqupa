@@ -600,7 +600,18 @@ export default function RegistrationForm() {
             <div className="flex space-x-4 items-center">
               <button type="button" onClick={() => { localStorage.removeItem('ppdbEditId'); navigate('/dashboard'); }} className="text-gray-400 font-bold hover:text-gray-600 text-sm">Batal</button>
               {step < 4 ? (
-                <button type="button" onClick={handleNext} className="px-10 py-2.5 rounded-md bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-md active:scale-95 transition-all">Selanjutnya</button>
+                <>
+                  {isEditMode && (
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="px-6 py-2.5 rounded-md border-2 border-emerald-600 text-emerald-700 bg-white font-bold hover:bg-emerald-50 shadow-sm active:scale-95 transition-all flex items-center"
+                    >
+                      {isSubmitting ? <><div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mr-2"></div> Menyimpan...</> : 'Simpan Perubahan'}
+                    </button>
+                  )}
+                  <button type="button" onClick={handleNext} className="px-10 py-2.5 rounded-md bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-md active:scale-95 transition-all">Selanjutnya</button>
+                </>
               ) : (
                 <button type="submit" disabled={isSubmitting} className="px-10 py-2.5 rounded-md bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-md flex items-center active:scale-95 transition-all">
                   {isSubmitting ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div> Menyimpan...</> : (isEditMode ? 'Simpan Perubahan' : 'Kirim Pendaftaran')}
